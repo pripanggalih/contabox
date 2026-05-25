@@ -75,6 +75,9 @@ export const updateContainerInputSchema = z.object({
   isLocked: z.boolean().optional(),
   proxyId: z.string().nullable().optional(),
   fingerprintId: z.string().nullable().optional(),
+  autoSnapshot: z.boolean().optional(),
+  retentionDays: z.number().int().min(0).max(3650).nullable().optional(),
+  snapshotIncludeIdb: z.boolean().optional(),
 });
 export type UpdateContainerInput = z.infer<typeof updateContainerInputSchema>;
 

@@ -1,7 +1,7 @@
-import { Shuffle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@shared/messaging';
 import type { ContainerColor, ContainerIcon } from '@shared/types';
+import { Shuffle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import {
   CONTAINER_ICONS,
   EXTENDED_HEXES,
@@ -181,15 +181,10 @@ export function CreateContainerDialog({ onClose }: Props) {
             })}
           </div>
           <div className="mt-2">
-            <IconPicker
-              nativeIcon={icon}
-              value={customIcon}
-              color={hex}
-              onChange={setCustomIcon}
-            />
+            <IconPicker nativeIcon={icon} value={customIcon} color={hex} onChange={setCustomIcon} />
             <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-              Picking a custom icon only affects sidebar/popup. Firefox's tab strip
-              still uses the native glyph above.
+              Picking a custom icon only affects sidebar/popup. Firefox's tab strip still uses the
+              native glyph above.
             </p>
           </div>
         </fieldset>

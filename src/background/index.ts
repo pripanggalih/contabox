@@ -6,12 +6,19 @@
  */
 import { browser } from '@shared/browser';
 import { autoRuleEngine } from './auto-rule-engine';
+import { autoSnapshotEngine } from './auto-snapshot';
 import { commandRouter } from './command-router';
 import { containerManager } from './container-manager';
 import { fingerprintEngine } from './fingerprint-engine';
+import { lockManager } from './lock-manager';
 import { macImporter } from './mac-importer';
+import { installLogRing } from './privacy';
 import { proxyEngine } from './proxy-engine';
 import { webRtcEngine } from './webrtc-engine';
+
+// Capture early console output for the debug-logs export. Safe to install
+// before everything else; failures are swallowed.
+installLogRing();
 
 // Attach the message router FIRST so the UI can talk to BG even if other
 // engines fail to initialize. Anything below is best-effort.
@@ -30,11 +37,17 @@ try {
 } catch (err) {
   console.warn('[contabox] proxyEngine.attach failed', err);
 }
+proxyEngine.ensureScheduled().catch((err) => {
+  console.warn('[contabox] proxyEngine.ensureScheduled failed', err);
+});
 fingerprintEngine.attach().catch((err) => {
   console.warn('[contabox] fingerprintEngine.attach failed', err);
 });
 autoRuleEngine.attach().catch((err) => {
   console.warn('[contabox] autoRuleEngine.attach failed', err);
+});
+autoSnapshotEngine.attach().catch((err) => {
+  console.warn('[contabox] autoSnapshotEngine.attach failed', err);
 });
 webRtcEngine.apply().catch((err) => {
   console.warn('[contabox] webRtcEngine.apply failed', err);
@@ -66,6 +79,7 @@ browser.commands.onCommand.addListener(async (name) => {
     case 'lock-all':
       try {
         const r = await containerManager.lockAll();
+        await lockManager.relockAll();
         await dispatchUiEvent({ type: 'ui.lockAll' });
         console.info('[contabox] lockAll:', r.count);
       } catch (err) {

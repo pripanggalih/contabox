@@ -14,16 +14,29 @@
     "cookies",
     "storage",
     "tabs",
+    "tabHide",
     "webRequest",
     "webRequestBlocking",
+    "webNavigation",
     "proxy",
-    "scripting"
+    "scripting",
+    "alarms",
+    "idle",
+    "privacy"
   ],
   "host_permissions": ["<all_urls>"],
   "background": {
     "scripts": ["background.js"],
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/autofill.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
   "sidebar_action": {
     "default_panel": "src/sidebar/index.html",
     "default_title": "Contabox",

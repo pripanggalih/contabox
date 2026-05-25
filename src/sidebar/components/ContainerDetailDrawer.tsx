@@ -27,7 +27,15 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
   const [proxyId, setProxyId] = useState(view.ext.proxyId ?? '');
   const [fingerprintId, setFingerprintId] = useState(view.ext.fingerprintId ?? '');
   const [customIcon, setCustomIcon] = useState<string | undefined>(view.ext.customIcon);
+  const [autoSnapshot, setAutoSnapshot] = useState(view.ext.autoSnapshot);
+  const [retentionDaysRaw, setRetentionDaysRaw] = useState(
+    view.ext.retentionDays !== undefined ? String(view.ext.retentionDays) : '',
+  );
+  const [includeIdb, setIncludeIdb] = useState(view.ext.snapshotIncludeIdb === true);
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
   const [busy, setBusy] = useState(false);
+  const hasPin = !!view.ext.lockPinHash;
 
   useEffect(() => {
     void (async () => {
@@ -48,6 +56,13 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean);
+      const retentionParsed = retentionDaysRaw.trim() === '' ? null : Number(retentionDaysRaw);
+      if (
+        retentionParsed !== null &&
+        (!Number.isFinite(retentionParsed) || retentionParsed < 0 || retentionParsed > 3650)
+      ) {
+        throw new Error('Retention must be 0–3650 days (0 = forever).');
+      }
       await invoke({
         type: 'container.update',
         payload: {
@@ -60,12 +75,42 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
           proxyId: proxyId || null,
           fingerprintId: fingerprintId || null,
           customIcon: customIcon ?? null,
+          autoSnapshot,
+          retentionDays: retentionParsed,
+          snapshotIncludeIdb: includeIdb,
         },
       });
+
+      // PIN setup is a separate command — only fire when the user typed one.
+      if (pin.trim()) {
+        if (pin !== pinConfirm) throw new Error('PINs do not match');
+        await invoke({
+          type: 'lock.setPin',
+          payload: { cookieStoreId: view.cookieStoreId, pin: pin.trim() },
+        });
+      }
+
       await refresh();
       onClose();
     } catch (err) {
       pushToast({ variant: 'error', message: `Save failed: ${String(err)}` });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearPin() {
+    if (!confirm('Remove PIN? Container will fall back to master-password unlock.')) return;
+    setBusy(true);
+    try {
+      await invoke({
+        type: 'lock.setPin',
+        payload: { cookieStoreId: view.cookieStoreId, pin: null },
+      });
+      await refresh();
+      pushToast({ variant: 'success', message: 'PIN removed' });
+    } catch (err) {
+      pushToast({ variant: 'error', message: `PIN clear failed: ${String(err)}` });
     } finally {
       setBusy(false);
     }
@@ -119,8 +164,8 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
             onChange={setCustomIcon}
           />
           <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-            Custom icons appear in the sidebar and popup. Firefox's tab strip
-            keeps the native glyph.
+            Custom icons appear in the sidebar and popup. Firefox's tab strip keeps the native
+            glyph.
           </p>
         </Field>
 
@@ -170,6 +215,88 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
             className="input"
           />
         </Field>
+
+        <fieldset className="rounded-md border border-[var(--color-border)] p-3">
+          <legend className="px-1 text-xs font-medium text-[var(--color-text-muted)]">
+            Auto-snapshot
+          </legend>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={autoSnapshot}
+              onChange={(e) => setAutoSnapshot(e.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            Capture a snapshot when the last tab in this container closes or the container is
+            removed.
+          </label>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Retention days (0 = keep forever)">
+              <input
+                type="number"
+                min={0}
+                max={3650}
+                value={retentionDaysRaw}
+                onChange={(e) => setRetentionDaysRaw(e.target.value)}
+                placeholder="default (30)"
+                className="input"
+                disabled={!autoSnapshot}
+              />
+            </Field>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeIdb}
+                onChange={(e) => setIncludeIdb(e.target.checked)}
+                className="accent-[var(--color-accent)]"
+              />
+              Include IndexedDB
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset className="rounded-md border border-[var(--color-border)] p-3">
+          <legend className="px-1 text-xs font-medium text-[var(--color-text-muted)]">
+            Container PIN
+          </legend>
+          <p className="mb-2 text-xs text-[var(--color-text-muted)]">
+            Optional 4–12 digit PIN. When set, opening this container while locked requires the PIN
+            instead of the global master password.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={hasPin ? 'New PIN (leave blank to keep)' : 'PIN'}>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 12))}
+                autoComplete="new-password"
+                className="input"
+              />
+            </Field>
+            <Field label="Confirm">
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={pinConfirm}
+                onChange={(e) => setPinConfirm(e.target.value.replace(/[^0-9]/g, '').slice(0, 12))}
+                autoComplete="new-password"
+                className="input"
+              />
+            </Field>
+          </div>
+          {hasPin ? (
+            <button
+              type="button"
+              onClick={clearPin}
+              className="mt-2 text-xs text-[var(--color-danger)] hover:underline"
+            >
+              Remove PIN
+            </button>
+          ) : null}
+        </fieldset>
 
         <div className="flex justify-end gap-2 pt-2">
           <button

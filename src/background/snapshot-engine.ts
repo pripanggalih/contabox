@@ -4,6 +4,7 @@
  * Captures:
  *   - Cookies (via `browser.cookies.getAll({ storeId })`)
  *   - localStorage / sessionStorage (via `scripting.executeScript` per origin)
+ *   - IndexedDB (opt-in per container via `ContainerExt.snapshotIncludeIdb`)
  *
  * Origin discovery: walk the cookies, collect unique `domain → origin` set.
  * For tabs already open in the container, we also poll their location origin
@@ -12,13 +13,20 @@
  * Restore:
  *   - Clear cookies/storage for the snapshot's origins, then re-write captured
  *     values. Storage write requires a tab on that origin; we open one
- *     temporarily if none exists.
+ *     temporarily if none exists. IDB restore: drop existing dbs of the same
+ *     name, re-create stores, replay records.
  *
- * IndexedDB capture is opt-in and deferred to M9 — out of scope for M6.
+ * Auto-snapshot lifecycle and retention pruning live in `auto-snapshot.ts`.
  */
 import { browser } from '@shared/browser';
 import { getDb } from '@shared/db';
-import type { Snapshot, SnapshotCookie, SnapshotOrigin } from '@shared/types';
+import type {
+  Snapshot,
+  SnapshotCookie,
+  SnapshotIdbStore,
+  SnapshotIndexedDb,
+  SnapshotOrigin,
+} from '@shared/types';
 import { now, uuid } from '@shared/utils';
 
 interface CookieRow {
@@ -46,6 +54,9 @@ export class SnapshotEngine {
   }
 
   async capture(containerId: string, label: string): Promise<Snapshot> {
+    const ext = await getDb().containers.get(containerId);
+    const includeIdb = ext?.snapshotIncludeIdb === true;
+
     const cookies = (await browser.cookies.getAll({
       storeId: containerId,
     })) as unknown as CookieRow[];
@@ -86,12 +97,13 @@ export class SnapshotEngine {
           expirationDate: c.expirationDate,
         }));
 
-      const storage = await this.captureStorage(containerId, origin);
+      const storage = await this.captureStorage(containerId, origin, includeIdb);
       origins.push({
         origin,
         cookies: cookieRows,
         localStorage: storage.localStorage,
         sessionStorage: storage.sessionStorage,
+        ...(storage.indexedDb ? { indexedDb: storage.indexedDb } : {}),
       });
     }
 
@@ -176,7 +188,12 @@ export class SnapshotEngine {
   private async captureStorage(
     containerId: string,
     origin: string,
-  ): Promise<{ localStorage: Record<string, string>; sessionStorage: Record<string, string> }> {
+    includeIdb: boolean,
+  ): Promise<{
+    localStorage: Record<string, string>;
+    sessionStorage: Record<string, string>;
+    indexedDb?: SnapshotIndexedDb[];
+  }> {
     const tabs = await browser.tabs.query({ cookieStoreId: containerId });
     const matching = tabs.find((t) => t.url && originOf(t.url) === origin);
 
@@ -206,7 +223,8 @@ export class SnapshotEngine {
       if (!scripting?.executeScript) return empty;
       const [result] = await scripting.executeScript({
         target: { tabId },
-        func: () => {
+        args: [includeIdb] as never,
+        func: ((withIdb: boolean) => {
           const ls: Record<string, string> = {};
           const ss: Record<string, string> = {};
           try {
@@ -225,11 +243,93 @@ export class SnapshotEngine {
           } catch (e) {
             void e;
           }
-          return { localStorage: ls, sessionStorage: ss };
-        },
+
+          if (!withIdb) {
+            return { localStorage: ls, sessionStorage: ss };
+          }
+
+          // IDB capture (page-world async). We return a Promise; executeScript
+          // unwraps it.
+          return (async () => {
+            const dumps: Array<{
+              name: string;
+              version: number;
+              stores: Array<{
+                name: string;
+                keyPath: string | string[] | null;
+                autoIncrement: boolean;
+                records: Array<{ key: unknown; value: unknown }>;
+              }>;
+            }> = [];
+            try {
+              const idbAny = indexedDB as unknown as {
+                databases?: () => Promise<Array<{ name?: string; version?: number }>>;
+              };
+              if (typeof idbAny.databases !== 'function') {
+                return { localStorage: ls, sessionStorage: ss, indexedDb: dumps };
+              }
+              const dbList = (await idbAny.databases().catch(() => [])) || [];
+              for (const meta of dbList) {
+                if (!meta.name) continue;
+                const db = await new Promise<IDBDatabase | null>((resolve) => {
+                  const req = indexedDB.open(meta.name as string);
+                  req.onsuccess = () => resolve(req.result);
+                  req.onerror = () => resolve(null);
+                  req.onblocked = () => resolve(null);
+                });
+                if (!db) continue;
+                const stores: SnapshotIdbStore[] = [];
+                for (const storeName of Array.from(db.objectStoreNames)) {
+                  try {
+                    const tx = db.transaction(storeName, 'readonly');
+                    const store = tx.objectStore(storeName);
+                    const records = await new Promise<Array<{ key: unknown; value: unknown }>>(
+                      (resolve) => {
+                        const out: Array<{ key: unknown; value: unknown }> = [];
+                        const cursorReq = store.openCursor();
+                        cursorReq.onsuccess = () => {
+                          const cursor = cursorReq.result;
+                          if (!cursor) return resolve(out);
+                          out.push({
+                            key: store.keyPath ? null : cursor.key,
+                            value: cursor.value,
+                          });
+                          cursor.continue();
+                        };
+                        cursorReq.onerror = () => resolve(out);
+                      },
+                    );
+                    stores.push({
+                      name: storeName,
+                      keyPath: store.keyPath as string | string[] | null,
+                      autoIncrement: store.autoIncrement,
+                      records,
+                    });
+                  } catch (err) {
+                    void err;
+                  }
+                }
+                dumps.push({ name: meta.name, version: db.version, stores });
+                db.close();
+              }
+            } catch (e) {
+              void e;
+            }
+            return { localStorage: ls, sessionStorage: ss, indexedDb: dumps };
+          })();
+        }) as never,
       } as never);
 
-      const r = (result as { result?: typeof empty })?.result ?? empty;
+      const r =
+        (
+          result as {
+            result?: {
+              localStorage: Record<string, string>;
+              sessionStorage: Record<string, string>;
+              indexedDb?: SnapshotIndexedDb[];
+            };
+          }
+        )?.result ?? empty;
       return r;
     } catch {
       return empty;
@@ -272,8 +372,12 @@ export class SnapshotEngine {
       if (!scripting?.executeScript) return;
       await scripting.executeScript({
         target: { tabId },
-        args: [origin.localStorage, origin.sessionStorage] as never,
-        func: ((ls: Record<string, string>, ss: Record<string, string>) => {
+        args: [origin.localStorage, origin.sessionStorage, origin.indexedDb ?? null] as never,
+        func: ((
+          ls: Record<string, string>,
+          ss: Record<string, string>,
+          idbDumps: SnapshotIndexedDb[] | null,
+        ) => {
           try {
             localStorage.clear();
             for (const [k, v] of Object.entries(ls)) localStorage.setItem(k, v);
@@ -286,6 +390,60 @@ export class SnapshotEngine {
           } catch (e) {
             void e;
           }
+
+          if (!idbDumps || idbDumps.length === 0) return;
+
+          return (async () => {
+            for (const dump of idbDumps) {
+              try {
+                // Drop existing db of same name to start clean.
+                await new Promise<void>((resolve) => {
+                  const req = indexedDB.deleteDatabase(dump.name);
+                  req.onsuccess = req.onerror = req.onblocked = () => resolve();
+                });
+                const db = await new Promise<IDBDatabase | null>((resolve) => {
+                  const req = indexedDB.open(dump.name, dump.version);
+                  req.onupgradeneeded = () => {
+                    const upgrading = req.result;
+                    for (const s of dump.stores) {
+                      try {
+                        upgrading.createObjectStore(s.name, {
+                          keyPath: s.keyPath ?? undefined,
+                          autoIncrement: s.autoIncrement,
+                        });
+                      } catch (err) {
+                        void err;
+                      }
+                    }
+                  };
+                  req.onsuccess = () => resolve(req.result);
+                  req.onerror = () => resolve(null);
+                  req.onblocked = () => resolve(null);
+                });
+                if (!db) continue;
+                for (const s of dump.stores) {
+                  if (!db.objectStoreNames.contains(s.name)) continue;
+                  await new Promise<void>((resolve) => {
+                    const tx = db.transaction(s.name, 'readwrite');
+                    const store = tx.objectStore(s.name);
+                    for (const rec of s.records) {
+                      try {
+                        if (s.keyPath) store.put(rec.value);
+                        else store.put(rec.value, rec.key as IDBValidKey);
+                      } catch (err) {
+                        void err;
+                      }
+                    }
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = tx.onabort = () => resolve();
+                  });
+                }
+                db.close();
+              } catch (err) {
+                void err;
+              }
+            }
+          })();
         }) as never,
       } as never);
     } finally {

@@ -10,12 +10,14 @@
  * are removed permanently.
  */
 import { browser } from '@shared/browser';
+import { closestNativeColor, randomHexColor } from '@shared/color';
 import { getDb } from '@shared/db';
+import { randomLucideIcon } from '@shared/icons';
 import type {
-  CreateContainerInput,
-  UpdateContainerInput,
   BulkCreateInput,
   BulkOpenUrlInput,
+  CreateContainerInput,
+  UpdateContainerInput,
 } from '@shared/schemas';
 import type {
   ContainerColor,
@@ -25,8 +27,8 @@ import type {
   NativeContainer,
 } from '@shared/types';
 import { expandPattern, now, sleep } from '@shared/utils';
-import { closestNativeColor, randomHexColor } from '@shared/color';
-import { randomLucideIcon } from '@shared/icons';
+import { lockManager } from './lock-manager';
+import { snapshotEngine } from './snapshot-engine';
 
 const UNDO_WINDOW_MS = 5_000;
 
@@ -123,18 +125,22 @@ export class ContainerManager {
 
     const next: ContainerExt = {
       ...existing,
-      workspaceId: rest.workspaceId === null ? undefined : (rest.workspaceId ?? existing.workspaceId),
+      workspaceId:
+        rest.workspaceId === null ? undefined : (rest.workspaceId ?? existing.workspaceId),
       defaultUrl: rest.defaultUrl === null ? undefined : (rest.defaultUrl ?? existing.defaultUrl),
       customColor:
         rest.customColor === null ? undefined : (rest.customColor ?? existing.customColor),
-      customIcon:
-        rest.customIcon === null ? undefined : (rest.customIcon ?? existing.customIcon),
+      customIcon: rest.customIcon === null ? undefined : (rest.customIcon ?? existing.customIcon),
       tags: rest.tags ?? existing.tags,
       notes: rest.notes ?? existing.notes,
       isLocked: rest.isLocked ?? existing.isLocked,
       proxyId: rest.proxyId === null ? undefined : (rest.proxyId ?? existing.proxyId),
       fingerprintId:
         rest.fingerprintId === null ? undefined : (rest.fingerprintId ?? existing.fingerprintId),
+      autoSnapshot: rest.autoSnapshot ?? existing.autoSnapshot,
+      retentionDays:
+        rest.retentionDays === null ? undefined : (rest.retentionDays ?? existing.retentionDays),
+      snapshotIncludeIdb: rest.snapshotIncludeIdb ?? existing.snapshotIncludeIdb,
       lastUsedAt: existing.lastUsedAt,
     };
     await getDb().containers.put(next);
@@ -148,10 +154,26 @@ export class ContainerManager {
    * Soft-delete with undo.
    * Returns `restorable: true` and schedules permanent deletion. Caller must
    * call `restoreDeleted` within {@link UNDO_WINDOW_MS} to undo.
+   *
+   * Side-effects (in order):
+   *   1. If the container has `autoSnapshot: true`, capture a final snapshot
+   *      BEFORE removing the native container — `contextualIdentities.onRemoved`
+   *      fires after the storeId is invalidated, so we can't get cookies any
+   *      later than this point.
+   *   2. Remove from native immediately so tabs can't keep using it.
+   *   3. Stash for undo; permanent delete fires on the timer.
    */
   async delete(cookieStoreId: string): Promise<{ cookieStoreId: string; restorable: boolean }> {
     const view = await this.getView(cookieStoreId);
     if (!view) return { cookieStoreId, restorable: false };
+
+    if (view.ext.autoSnapshot) {
+      try {
+        await snapshotEngine.capture(cookieStoreId, `auto · pre-delete ${formatDateShort(now())}`);
+      } catch (err) {
+        console.warn('[contabox] pre-delete auto-snapshot failed', err);
+      }
+    }
 
     // Remove from native immediately so tabs in this container don't keep using it.
     await browser.contextualIdentities.remove(cookieStoreId);
@@ -199,9 +221,7 @@ export class ContainerManager {
     const out: ContainerView[] = [];
     for (let i = 1; i <= input.count; i++) {
       const name = expandPattern(input.namePattern, i);
-      const customColor = input.randomColor
-        ? randomHexColor()
-        : input.customColor;
+      const customColor = input.randomColor ? randomHexColor() : input.customColor;
       const customIcon = input.randomIcon ? randomLucideIcon() : input.customIcon;
       const view = await this.create({
         name,
@@ -224,7 +244,7 @@ export class ContainerManager {
   ): Promise<{ tabId: number }> {
     const view = await this.getView(cookieStoreId);
     if (!view) throw new Error('container not found');
-    if (view.ext.isLocked) {
+    if (view.ext.isLocked && !lockManager.isUnlockedInSession(cookieStoreId)) {
       throw new Error('container is locked — unlock from sidebar');
     }
     const url = view.ext.defaultUrl;
@@ -242,7 +262,9 @@ export class ContainerManager {
   }
 
   async setLocked(cookieStoreId: string, locked: boolean): Promise<ContainerView> {
-    return this.update({ cookieStoreId, isLocked: locked });
+    const view = await this.update({ cookieStoreId, isLocked: locked });
+    await lockManager.applyLockState(cookieStoreId, locked);
+    return view;
   }
 
   async lockAll(): Promise<{ count: number }> {
@@ -251,6 +273,7 @@ export class ContainerManager {
     for (const c of all) {
       if (!c.isLocked) {
         await getDb().containers.update(c.cookieStoreId, { isLocked: true });
+        await lockManager.applyLockState(c.cookieStoreId, true);
         count++;
       }
     }
@@ -277,6 +300,7 @@ export class ContainerManager {
     for (const id of ids) {
       try {
         await getDb().containers.update(id, { isLocked: locked });
+        await lockManager.applyLockState(id, locked);
         count++;
       } catch (err) {
         console.warn('[contabox] bulkSetLocked fail', id, err);
@@ -285,10 +309,7 @@ export class ContainerManager {
     return { count };
   }
 
-  async bulkSetWorkspace(
-    ids: string[],
-    workspaceId: string | null,
-  ): Promise<{ count: number }> {
+  async bulkSetWorkspace(ids: string[], workspaceId: string | null): Promise<{ count: number }> {
     let count = 0;
     for (const id of ids) {
       try {
@@ -461,6 +482,12 @@ export class ContainerManager {
       lastUsedAt: now(),
     };
   }
+}
+
+function formatDateShort(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => (n < 10 ? `0${n}` : String(n));
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export const containerManager = new ContainerManager();

@@ -52,7 +52,20 @@ export interface ContainerExt {
   proxyId?: string;
   fingerprintId?: string;
   isLocked: boolean;
+  /**
+   * Optional PIN gate for unlock. PBKDF2-SHA256 hashed (separate salt per
+   * container). When unset, locked containers unlock with the global vault
+   * master password instead.
+   */
+  lockPinHash?: string;
+  lockPinSalt?: string;
   autoSnapshot: boolean;
+  /**
+   * Opt-in: when capturing a snapshot for this container, also capture each
+   * origin's IndexedDB database content. Default false; sites with > 10MB IDB
+   * (Notion, Linear, Figma) can blow past the 100MB-per-snapshot soft cap.
+   */
+  snapshotIncludeIdb?: boolean;
   retentionDays?: number;
   defaultUrl?: string;
   /** Optional hex override. When set, sidebar/popup render this instead of the
@@ -121,6 +134,16 @@ export interface Proxy {
   lastHealthCheck?: number;
   lastHealthStatus?: 'ok' | 'fail';
   lastHealthLatencyMs?: number;
+  /**
+   * Number of consecutive failed health checks. Auto-disable triggers when
+   * this reaches the threshold (default 3). Reset to 0 on a successful probe.
+   */
+  consecutiveFails?: number;
+  /**
+   * When true, ProxyEngine treats this proxy as unavailable and refuses to
+   * route through it. User can re-enable from the proxy panel.
+   */
+  disabled?: boolean;
   createdAt: number;
 }
 
@@ -169,6 +192,31 @@ export interface SnapshotOrigin {
   cookies: SnapshotCookie[];
   localStorage: Record<string, string>;
   sessionStorage: Record<string, string>;
+  /**
+   * Optional dump of the origin's IndexedDB databases. Captured only when the
+   * container has `snapshotIncludeIdb: true`. Each db is structured-clone
+   * serialized; binary types (Blob, File, ArrayBuffer) are best-effort.
+   */
+  indexedDb?: SnapshotIndexedDb[];
+}
+
+export interface SnapshotIndexedDb {
+  name: string;
+  version: number;
+  stores: SnapshotIdbStore[];
+}
+
+export interface SnapshotIdbStore {
+  name: string;
+  keyPath: string | string[] | null;
+  autoIncrement: boolean;
+  /**
+   * Records as `{ key, value }` pairs. `key` is `null` when keyPath is set
+   * (Firefox derives the key from the value); explicit when out-of-line.
+   * Both are encoded via `JSON.stringify` after a structured-clone pass for
+   * cross-runtime portability.
+   */
+  records: Array<{ key: unknown; value: unknown }>;
 }
 
 export interface SnapshotCookie {

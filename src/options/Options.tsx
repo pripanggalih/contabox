@@ -2,13 +2,14 @@ import { onBroadcast } from '@shared/messaging';
 import { useEffect, useState } from 'react';
 import { AutoRulesPanel } from './components/AutoRulesPanel';
 import { FingerprintPanel } from './components/FingerprintPanel';
+import { PrivacyPanel } from './components/PrivacyPanel';
 import { ProxyPanel } from './components/ProxyPanel';
 import { ProxyPoolPanel } from './components/ProxyPoolPanel';
 import { VaultEntriesPanel } from './components/VaultEntriesPanel';
 import { VaultPanel } from './components/VaultPanel';
 import { useOptionsStore } from './state/store';
 
-type Tab = 'general' | 'proxy' | 'fingerprint' | 'rules' | 'vault';
+type Tab = 'general' | 'proxy' | 'fingerprint' | 'rules' | 'vault' | 'privacy';
 
 export function Options() {
   const refresh = useOptionsStore((s) => s.refresh);
@@ -41,7 +42,7 @@ export function Options() {
         aria-label="Settings sections"
         className="mb-4 flex gap-1 border-b border-[var(--color-border)]"
       >
-        {(['general', 'proxy', 'fingerprint', 'rules', 'vault'] as Tab[]).map((t) => (
+        {(['general', 'proxy', 'fingerprint', 'rules', 'vault', 'privacy'] as Tab[]).map((t) => (
           <button
             key={t}
             role="tab"
@@ -73,6 +74,7 @@ export function Options() {
           <VaultEntriesPanel />
         </div>
       ) : null}
+      {tab === 'privacy' ? <PrivacyPanel /> : null}
 
       <style>{`.input { width: 100%; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-bg-primary); padding: 6px 8px; font-size: 13px; }
         .input:focus { outline: none; border-color: var(--color-accent); }`}</style>
@@ -86,16 +88,15 @@ function GeneralPanel() {
       <div className="rounded-lg border border-[var(--color-border)] p-4">
         <h2 className="mb-2 text-base font-medium">Status</h2>
         <p className="text-sm text-[var(--color-text-muted)]">
-          You are running Contabox <strong>0.1.0</strong> (M4 — Vault + Proxy).
+          You are running Contabox <strong>0.1.0</strong> (M7 — Vault, Autofill, TOTP, Container
+          lock).
         </p>
       </div>
       <div className="rounded-lg border border-[var(--color-border)] p-4">
         <h2 className="mb-2 text-base font-medium">Roadmap</h2>
         <ul className="list-inside list-disc space-y-1 text-sm">
-          <li>M5 — Fingerprint engine</li>
-          <li>M6 — Snapshots, cookie editor, auto-rules</li>
-          <li>M7 — Vault expansion: passwords, TOTP, autofill, container lock</li>
-          <li>M8 — Beta release</li>
+          <li>M8 — Public beta on AMO (perf + a11y + security audit)</li>
+          <li>Post-beta — Activity log, bandwidth analytics, sync, profile farm</li>
         </ul>
       </div>
     </section>

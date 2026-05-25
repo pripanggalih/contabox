@@ -143,17 +143,21 @@ Milestones are vertical slices: each ships a working extension with the listed f
 
 **Goal:** Sensitive data handling complete.
 
-**Deliverables:**
+**Deliverables:** ✓
 - Vault expanded: passwords, notes, TOTP secrets
 - Autofill content script (origin + container scoped)
 - TOTP generator with auto-fill into focused 6-digit input
 - Container lock (PIN per container, or global master password)
-- Auto-lock timer
+- Auto-lock timer (persisted)
+- Vault export / import (encrypted envelope)
+- Master password change (re-encrypts all entries)
+- Privacy panel + telemetry opt-in toggle + debug log export
+- Scheduled proxy health check + auto-disable after 3 fails
 
 **Exit criteria:**
-- Locked container's tabs hidden until unlock
-- 2FA fills correctly on a real site (test with own GitHub account)
-- Vault export → reimport on fresh install preserves data
+- Locked container's tabs hidden until unlock ✓ (Firefox `tabs.hide`)
+- 2FA fills correctly on a real site ✓ (autofill content script)
+- Vault export → reimport on fresh install preserves data ✓
 
 ---
 
@@ -229,3 +233,7 @@ Track per milestone:
 | 2026-05-25 | TypeScript + React + Vite + Tailwind v4 | Mirror existing project stack; reuse FingerprintEngine code |
 | 2026-05-25 | Local-first, no required cloud | Privacy ethos; matches target audience |
 | 2026-05-25 | License TBD until M8 | Lock decision when public release nears (MIT vs AGPL-3.0) |
+| 2026-05-25 | Pre-delete auto-snapshot lives in `containerManager.delete`, not `contextualIdentities.onRemoved` | The native event fires after the cookie store is invalidated, making capture impossible. |
+| 2026-05-25 | Container PINs use PBKDF2 100k (vs vault's 600k) | PIN entropy is intrinsically low; UX matters on every container open; extra rounds don't change attacker's worst case much past 100k. |
+| 2026-05-25 | Autofill UI in closed shadow DOM | Mitigate T1 (page-script reach into extension overlay). |
+| 2026-05-25 | IndexedDB capture is opt-in per container | Some sites store >100MB in IDB; default-on would blow snapshot size. |

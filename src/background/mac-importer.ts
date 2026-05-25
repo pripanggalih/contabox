@@ -21,9 +21,7 @@ const NATIVE_WORKSPACE_ICON = '🦊';
 export class MacImporter {
   /** Native containers that don't have an ext row yet. */
   async detect(): Promise<{ count: number; native: ContainerView[] }> {
-    const natives = (await browser.contextualIdentities.query(
-      {},
-    )) as unknown as NativeContainer[];
+    const natives = (await browser.contextualIdentities.query({})) as unknown as NativeContainer[];
     const exts = await getDb().containers.toArray();
     const known = new Set(exts.map((e) => e.cookieStoreId));
     const orphans = natives.filter((n) => !known.has(n.cookieStoreId));

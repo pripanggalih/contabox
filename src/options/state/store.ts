@@ -11,7 +11,7 @@ interface OptionsState {
   proxies: Proxy[];
   proxyPools: ProxyPool[];
   fingerprints: FingerprintProfile[];
-  vault: { initialized: boolean; unlocked: boolean };
+  vault: { initialized: boolean; unlocked: boolean; autoLockMinutes: number };
   refresh: () => Promise<void>;
 }
 
@@ -20,7 +20,7 @@ export const useOptionsStore = create<OptionsState>((set) => ({
   proxies: [],
   proxyPools: [],
   fingerprints: [],
-  vault: { initialized: false, unlocked: false },
+  vault: { initialized: false, unlocked: false, autoLockMinutes: 15 },
 
   async refresh() {
     const [containers, proxies, proxyPools, fingerprints, vaultStatus] = await Promise.all([

@@ -132,9 +132,18 @@ Rules:
 | Use | Algorithm | Parameters |
 |---|---|---|
 | Master key derivation | PBKDF2 | SHA-256, 600,000 iterations, 16-byte salt |
+| Container PIN derivation | PBKDF2 | SHA-256, 100,000 iterations, 16-byte salt (per container) |
 | Vault entry encryption | AES-GCM | 256-bit key, 12-byte IV (random per entry), 16-byte tag |
+| Vault export envelope | AES-GCM | Same key as live vault; verifier replayed on import |
 | Sync encryption (optional, post-MVP) | AES-GCM | Same, separate derived key |
 | Random | `crypto.getRandomValues` | — |
+
+PIN iteration count is intentionally lower than the master vault password
+because PINs are typically 4–8 digits; raising iterations past ~100k does not
+meaningfully change brute-force economics for low-entropy secrets, while the
+UX cost of a slow PIN unlock would push users back to "no lock" anyway.
+
+PINs use a constant-time compare on verify (see `shared/pin.ts`).
 
 No custom crypto. All operations via Web Crypto API.
 
@@ -163,10 +172,15 @@ Document for AMO submission:
 | `cookies` | Snapshot capture + cookie editor |
 | `<all_urls>` | Proxy applies to all sites; user expects this for an isolation tool |
 | `webRequest` + `webRequestBlocking` | Header rewrite for UA, Accept-Language |
+| `webNavigation` | Auto-rule routing (`onBeforeRequest` already covers this; reserved for finer-grained nav events) |
 | `proxy` | Per-container proxy |
-| `scripting` | Inject fingerprint content script |
+| `scripting` | Inject fingerprint content script + snapshot capture/restore |
 | `storage` | Local state (IndexedDB needs `unlimitedStorage`?) |
 | `tabs` | Read tab's container, move tabs |
+| `tabHide` | Hide tabs of locked containers until unlocked |
+| `alarms` | Scheduled proxy health probe + auto-snapshot retention pruner |
+| `idle` | Reserved for auto-lock-on-idle; currently unused (timer-based instead) |
+| `privacy` | WebRTC IP-handling policy (per-container approximation) |
 | `commands` | Keyboard shortcuts |
 
 ---

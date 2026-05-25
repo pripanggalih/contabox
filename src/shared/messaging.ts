@@ -53,9 +53,15 @@ export type Command =
   | { type: 'container.bulkAddTags'; payload: { ids: string[]; tags: string[] } }
   | { type: 'container.bulkRemoveTags'; payload: { ids: string[]; tags: string[] } }
   | { type: 'container.bulkSetProxy'; payload: { ids: string[]; proxyId: string | null } }
-  | { type: 'container.bulkSetFingerprint'; payload: { ids: string[]; fingerprintId: string | null } }
+  | {
+      type: 'container.bulkSetFingerprint';
+      payload: { ids: string[]; fingerprintId: string | null };
+    }
   | { type: 'container.bulkHibernate'; payload: { ids: string[] } }
-  | { type: 'container.bulkOpenDefault'; payload: { ids: string[]; newWindow?: boolean; staggerMs?: number } }
+  | {
+      type: 'container.bulkOpenDefault';
+      payload: { ids: string[]; newWindow?: boolean; staggerMs?: number };
+    }
   // workspaces
   | { type: 'workspace.list' }
   | { type: 'workspace.create'; payload: WorkspaceInput }
@@ -93,6 +99,9 @@ export type Command =
   | { type: 'vault.initialize'; payload: { password: string } }
   | { type: 'vault.unlock'; payload: { password: string } }
   | { type: 'vault.lock' }
+  | { type: 'vault.changeMasterPassword'; payload: { newPassword: string } }
+  | { type: 'vault.export' }
+  | { type: 'vault.import'; payload: { envelope: unknown; password: string } }
   // fingerprint
   | { type: 'fingerprint.list' }
   | { type: 'fingerprint.createCustom'; payload: Omit<FingerprintProfile, 'id' | 'createdAt'> }
@@ -141,7 +150,29 @@ export type Command =
   | { type: 'vault.deleteEntry'; payload: { id: string } }
   | { type: 'vault.getSecret'; payload: { id: string } }
   | { type: 'vault.totpCode'; payload: { id: string } }
-  | { type: 'vault.setAutoLock'; payload: { minutes: number } };
+  | { type: 'vault.setAutoLock'; payload: { minutes: number } }
+  // lock manager
+  | {
+      type: 'lock.unlock';
+      payload: { cookieStoreId: string; pin?: string; masterPassword?: string };
+    }
+  | { type: 'lock.relock'; payload: { cookieStoreId: string } }
+  | { type: 'lock.setPin'; payload: { cookieStoreId: string; pin: string | null } }
+  | { type: 'lock.status'; payload: { cookieStoreId: string } }
+  // autofill (called from content script)
+  | { type: 'autofill.match'; payload: { origin: string } }
+  | { type: 'autofill.getSecret'; payload: { id: string; origin: string } }
+  // proxy scheduler
+  | { type: 'proxy.scheduleHealth'; payload: { minutes: number } }
+  | { type: 'proxy.runScheduledHealth' }
+  | { type: 'proxy.setEnabled'; payload: { id: string; enabled: boolean } }
+  // privacy / settings
+  | { type: 'settings.getPrivacy' }
+  | { type: 'settings.setTelemetryOptIn'; payload: { enabled: boolean } }
+  | { type: 'settings.exportDebugLogs' }
+  // snapshots: prune
+  | { type: 'snapshot.prune'; payload: { containerId: string } }
+  | { type: 'snapshot.pruneAll' };
 
 export type CommandType = Command['type'];
 
@@ -190,10 +221,13 @@ export type ResultMap = {
   'proxyPool.create': ProxyPool;
   'proxyPool.update': ProxyPool;
   'proxyPool.delete': { id: string };
-  'vault.status': { initialized: boolean; unlocked: boolean };
+  'vault.status': { initialized: boolean; unlocked: boolean; autoLockMinutes: number };
   'vault.initialize': { ok: true };
   'vault.unlock': { ok: true };
   'vault.lock': { ok: true };
+  'vault.changeMasterPassword': { ok: true };
+  'vault.export': import('../background/vault').VaultExport;
+  'vault.import': { imported: number };
   'fingerprint.list': FingerprintProfile[];
   'fingerprint.createCustom': FingerprintProfile;
   'fingerprint.randomFromPreset': FingerprintProfile;
@@ -222,6 +256,26 @@ export type ResultMap = {
   'vault.getSecret': { secret: string };
   'vault.totpCode': { code: string };
   'vault.setAutoLock': { ok: true };
+  'lock.unlock': { ok: true };
+  'lock.relock': { ok: true };
+  'lock.setPin': { ok: true };
+  'lock.status': { isLocked: boolean; isUnlockedThisSession: boolean; hasPin: boolean };
+  'autofill.match': Array<{
+    id: string;
+    kind: 'password' | 'totp';
+    label: string;
+    origin: string;
+    scope: 'global' | 'container';
+  }>;
+  'autofill.getSecret': { secret: string; kind: 'password' | 'totp' | 'note' | 'proxy-credential' };
+  'proxy.scheduleHealth': { ok: true };
+  'proxy.runScheduledHealth': { checked: number; failed: number; disabled: number };
+  'proxy.setEnabled': { ok: true };
+  'settings.getPrivacy': { telemetryOptIn: boolean };
+  'settings.setTelemetryOptIn': { ok: true };
+  'settings.exportDebugLogs': string;
+  'snapshot.prune': { deleted: number };
+  'snapshot.pruneAll': { deleted: number };
 };
 
 export type CommandResult<T extends CommandType> =
@@ -280,7 +334,9 @@ export type Broadcast =
   | { type: 'state.snapshots' }
   | { type: 'state.autoRules' }
   | { type: 'state.vault' }
-  | { type: 'state.tabs' };
+  | { type: 'state.tabs' }
+  | { type: 'state.locks' }
+  | { type: 'state.privacy' };
 
 export async function broadcast(event: Broadcast): Promise<void> {
   // sendMessage with no specific recipient reaches all extension pages.

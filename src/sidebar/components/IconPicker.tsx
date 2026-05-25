@@ -1,3 +1,4 @@
+import type { ContainerIcon } from '@shared/types';
 /**
  * Searchable Lucide icon picker.
  *
@@ -15,7 +16,6 @@
 import { Search, Shuffle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ContainerIcon } from '@shared/types';
 import { CUSTOM_ICON_CATALOG, displayIcon, randomLucideIcon } from '../lib/palette';
 
 interface PickedIcon {
@@ -23,9 +23,10 @@ interface PickedIcon {
   Component: LucideIcon;
 }
 
-const ALL_ICONS: PickedIcon[] = Object.entries(CUSTOM_ICON_CATALOG).map(
-  ([name, Component]) => ({ name, Component }),
-);
+const ALL_ICONS: PickedIcon[] = Object.entries(CUSTOM_ICON_CATALOG).map(([name, Component]) => ({
+  name,
+  Component,
+}));
 
 interface Props {
   /** Current Lucide name override, or undefined to use native fallback. */

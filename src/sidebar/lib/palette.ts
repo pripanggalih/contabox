@@ -1,3 +1,4 @@
+import { CUSTOM_ICON_NAMES, randomLucideIcon } from '@shared/icons';
 /**
  * Color/icon palettes mirroring Firefox's `contextualIdentities` enums.
  *
@@ -14,22 +15,7 @@
  *   - lookupLucideIcon() → look up a Lucide icon component by PascalCase name
  */
 import type { ContainerColor, ContainerIcon } from '@shared/types';
-import { CUSTOM_ICON_NAMES, randomLucideIcon } from '@shared/icons';
 import {
-  // Native enum components (13).
-  Briefcase,
-  CircleDollarSign,
-  Citrus,
-  Cat,
-  Coffee,
-  Cookie,
-  Fence,
-  Fingerprint,
-  Gift,
-  HelpCircle,
-  Palmtree,
-  ShoppingCart,
-  TreeDeciduous,
   // Curated extras (~100). Pulling explicit names lets esbuild tree-shake the
   // ~1500-icon library down to only what we ship.
   Anchor,
@@ -41,18 +27,25 @@ import {
   Bird,
   BookOpen,
   Bookmark,
+  // Native enum components (13).
+  Briefcase,
   Brush,
   Bug,
   Building2,
   Calendar,
   Camera,
   Car,
+  Cat,
+  CircleDollarSign,
+  Citrus,
   ClipboardList,
   Clock,
   Cloud,
   Code,
+  Coffee,
   Coins,
   Compass,
+  Cookie,
   Cpu,
   CreditCard,
   Crown,
@@ -60,8 +53,10 @@ import {
   Diamond,
   Dog,
   Eye,
+  Fence,
   FileText,
   Film,
+  Fingerprint,
   Fish,
   Flag,
   Flame,
@@ -69,11 +64,13 @@ import {
   Folder,
   Gamepad2,
   Gem,
+  Gift,
   Globe,
   GraduationCap,
   HardDrive,
   Headphones,
   Heart,
+  HelpCircle,
   Home,
   Hospital,
   Image,
@@ -82,6 +79,7 @@ import {
   Leaf,
   Lightbulb,
   Lock,
+  type LucideIcon,
   Mail,
   Map,
   MapPin,
@@ -94,6 +92,7 @@ import {
   Notebook,
   Package,
   Palette,
+  Palmtree,
   Pencil,
   Phone,
   PiggyBank,
@@ -106,6 +105,7 @@ import {
   Server,
   Shield,
   ShoppingBag,
+  ShoppingCart,
   Smile,
   Sparkles,
   Sprout,
@@ -117,6 +117,7 @@ import {
   Terminal,
   ThumbsUp,
   Train,
+  TreeDeciduous,
   TrendingUp,
   Trophy,
   Truck,
@@ -129,7 +130,6 @@ import {
   Wine,
   Wrench,
   Zap,
-  type LucideIcon,
 } from 'lucide-react';
 
 export const CONTAINER_COLORS: ContainerColor[] = [
@@ -223,10 +223,7 @@ export function randomHex(): string {
     const v = bytes[i] ?? 0;
     bytes[i] = 40 + Math.floor((v / 255) * 200);
   }
-  return (
-    '#' +
-    [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
-  );
+  return `#${[...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
 
 /** Snap an arbitrary hex to the nearest native ContainerColor by RGB distance. */
@@ -236,8 +233,7 @@ export function closestNative(hex: string): ContainerColor {
   let bestDist = Number.POSITIVE_INFINITY;
   for (const [name, native] of Object.entries(NATIVE_HEXES) as Array<[ContainerColor, string]>) {
     const n = parseHex(native);
-    const d =
-      (target.r - n.r) ** 2 + (target.g - n.g) ** 2 + (target.b - n.b) ** 2;
+    const d = (target.r - n.r) ** 2 + (target.g - n.g) ** 2 + (target.b - n.b) ** 2;
     if (d < bestDist) {
       bestDist = d;
       best = name;

@@ -84,9 +84,9 @@ First-run wizard.
 Configuration UI in full tab.
 
 - General: theme, default workspace, command palette shortcut
-- Privacy: telemetry opt-in toggle
-- Vault: lock timer, change password, export
-- Advanced: experimental flags, debug logs export
+- Privacy: telemetry opt-in toggle, debug log export, scheduled proxy health interval
+- Vault: lock timer, change master password, encrypted export/import
+- Advanced: experimental flags
 
 ---
 
@@ -152,11 +152,15 @@ URL → container routing.
 ### F2.6 Session Snapshots
 Capture and restore browsing state.
 
-- Captures: cookies, localStorage, sessionStorage, IndexedDB (opt-in per snapshot)
+- Captures: cookies, localStorage, sessionStorage, IndexedDB (opt-in per
+  container via `snapshotIncludeIdb`)
 - Per-origin granularity (user can choose subset of origins)
-- Manual save with label, or auto-save on close (configurable retention)
+- Manual save with label, or auto-save (when `autoSnapshot` is on) on
+  container-idle (last tab closed) or pre-delete
 - Browse snapshots: timeline view per container
 - Diff viewer: what changed since previous snapshot
+- Retention: per-container `retentionDays` (0 = forever) auto-prunes only
+  rows whose label starts with `auto · `
 
 **Acceptance:**
 - Snapshot of typical site (≤ 10MB IDB) saves in < 1s
@@ -190,9 +194,12 @@ Configurable shortcuts.
 ### F3.1 Container Lock
 Password-gate sensitive containers.
 
-- Lock individual containers with PIN or master password
-- Locked container: tabs hidden in sidebar, cannot be opened until unlocked
-- Optional: biometric (Touch ID via WebAuthn, where supported)
+- Lock individual containers with PIN (4–12 digits, PBKDF2-100k) or fall back
+  to the global vault master password
+- Locked container: tabs hidden via `tabs.hide` until unlocked
+- Cannot be opened until unlocked; sidebar prompts on open attempt
+- Session-unlock state cleared on `vault.lock` and on browser close
+- "Lock all" keyboard shortcut (`Ctrl+Shift+L`) re-locks every container
 
 ### F3.2 Credential Vault
 Encrypted credential storage with per-container scoping.

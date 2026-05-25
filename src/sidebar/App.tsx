@@ -5,7 +5,7 @@ import { CommandPalette } from './components/CommandPalette';
 import { CreateWorkspaceDialog } from './components/CreateWorkspaceDialog';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
-import { OnboardingWizard, ONBOARDED_META_KEY } from './components/OnboardingWizard';
+import { ONBOARDED_META_KEY, OnboardingWizard } from './components/OnboardingWizard';
 import { SelectionBar } from './components/SelectionBar';
 import { TagFilterBar } from './components/TagFilterBar';
 import { ToastHost } from './components/ToastHost';

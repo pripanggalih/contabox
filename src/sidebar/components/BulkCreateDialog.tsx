@@ -119,7 +119,10 @@ export function BulkCreateDialog({ onClose }: Props) {
           <div className="mb-1 text-xs text-[var(--color-text-muted)]">Preview</div>
           <div className="flex flex-wrap gap-1.5 font-mono text-xs">
             {previewNames.map((n, i) => (
-              <span key={n} className="flex items-center gap-1 rounded bg-[var(--color-bg-hover)] px-1.5 py-0.5">
+              <span
+                key={n}
+                className="flex items-center gap-1 rounded bg-[var(--color-bg-hover)] px-1.5 py-0.5"
+              >
                 {randomColor ? (
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-full"

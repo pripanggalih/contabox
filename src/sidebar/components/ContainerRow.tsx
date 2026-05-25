@@ -24,6 +24,7 @@ import { useContaboxStore } from '../state/store';
 import { ContainerDetailDrawer } from './ContainerDetailDrawer';
 import { CookieEditorDialog } from './CookieEditorDialog';
 import { SnapshotsDialog } from './SnapshotsDialog';
+import { UnlockDialog } from './UnlockDialog';
 
 interface Props {
   view: ContainerView;
@@ -56,8 +57,12 @@ export function ContainerRow({ view }: Props) {
   const [showDetail, setShowDetail] = useState(false);
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [showCookies, setShowCookies] = useState(false);
+  const [showUnlock, setShowUnlock] = useState(false);
+  /** Pending action to fire after a successful unlock. */
+  const [pendingUnlockAction, setPendingUnlockAction] = useState<null | (() => void)>(null);
 
-  const dragDisabled = editing || menuOpen || showDetail || showSnapshots || showCookies;
+  const dragDisabled =
+    editing || menuOpen || showDetail || showSnapshots || showCookies || showUnlock;
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: view.cookieStoreId,
@@ -91,8 +96,23 @@ export function ContainerRow({ view }: Props) {
 
   async function openContainer(newWindow: boolean) {
     if (view.ext.isLocked) {
-      pushToast({ variant: 'error', message: `Container "${view.name}" is locked.` });
-      return;
+      // Try opening; BG will reject if still session-locked.
+      try {
+        await invoke({
+          type: 'container.openDefault',
+          payload: { cookieStoreId: view.cookieStoreId, newWindow },
+        });
+        return;
+      } catch (err) {
+        // Detect "container is locked" error and prompt for unlock.
+        if (/locked/i.test(String(err))) {
+          setPendingUnlockAction(() => () => void openContainer(newWindow));
+          setShowUnlock(true);
+          return;
+        }
+        pushToast({ variant: 'error', message: `Open failed: ${String(err)}` });
+        return;
+      }
     }
     try {
       await invoke({
@@ -321,6 +341,22 @@ export function ContainerRow({ view }: Props) {
       ) : null}
       {showCookies ? (
         <CookieEditorDialog view={view} onClose={() => setShowCookies(false)} />
+      ) : null}
+      {showUnlock ? (
+        <UnlockDialog
+          view={view}
+          onUnlocked={() => {
+            setShowUnlock(false);
+            const fn = pendingUnlockAction;
+            setPendingUnlockAction(null);
+            if (fn) fn();
+            void refresh();
+          }}
+          onClose={() => {
+            setShowUnlock(false);
+            setPendingUnlockAction(null);
+          }}
+        />
       ) : null}
     </Fragment>
   );

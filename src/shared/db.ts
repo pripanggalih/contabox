@@ -49,6 +49,34 @@ export class ContaboxDB extends Dexie {
       vault: 'id, containerId, origin, kind, scope',
       meta: 'key',
     });
+
+    // v2 — M7. Adds container PIN, autoSnapshot/retention indices, proxy
+    // failure counters, snapshot IDB opt-in. Schema is additive (no field
+    // removals) so a v1→v2 upgrade is non-destructive; Dexie auto-handles
+    // missing columns as undefined on read.
+    this.version(2)
+      .stores({
+        containers: 'cookieStoreId, workspaceId, templateId, order, lastUsedAt, autoSnapshot',
+        proxies: 'id, poolId, lastHealthStatus, disabled',
+      })
+      .upgrade(async (tx) => {
+        // Backfill new boolean fields on existing rows so .where('autoSnapshot')
+        // queries don't need IS NULL handling.
+        await tx
+          .table<{ autoSnapshot?: boolean; snapshotIncludeIdb?: boolean }>('containers')
+          .toCollection()
+          .modify((c) => {
+            c.autoSnapshot ??= false;
+            c.snapshotIncludeIdb ??= false;
+          });
+        await tx
+          .table<{ disabled?: boolean; consecutiveFails?: number }>('proxies')
+          .toCollection()
+          .modify((p) => {
+            p.disabled ??= false;
+            p.consecutiveFails ??= 0;
+          });
+      });
   }
 }
 

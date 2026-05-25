@@ -47,10 +47,9 @@ export function SelectionBar() {
   const selectedViews = containers.filter((c) => selectedIds.has(c.cookieStoreId));
   const allLocked = selectedViews.length > 0 && selectedViews.every((v) => v.ext.isLocked);
 
-  async function bulk<T extends { count?: number; deleted?: number; closed?: number; opened?: number }>(
-    fn: () => Promise<T>,
-    label: (r: T) => string,
-  ) {
+  async function bulk<
+    T extends { count?: number; deleted?: number; closed?: number; opened?: number },
+  >(fn: () => Promise<T>, label: (r: T) => string) {
     try {
       const r = await fn();
       pushToast({ variant: 'success', message: label(r) });
@@ -179,9 +178,7 @@ export function SelectionBar() {
 
           <BarButton
             onClick={bulkLockToggle}
-            icon={
-              allLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />
-            }
+            icon={allLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
             label={allLocked ? 'Unlock' : 'Lock'}
           />
 

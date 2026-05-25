@@ -27,21 +27,32 @@ import {
 } from '@shared/schemas';
 import { totp } from '@shared/totp';
 import { autoRuleEngine } from './auto-rule-engine';
+import { autoSnapshotEngine } from './auto-snapshot';
+import { autofillResolver } from './autofill-resolver';
 import { containerManager } from './container-manager';
 import { cookieManager } from './cookie-manager';
 import { fingerprintManager } from './fingerprint-engine';
+import { lockManager } from './lock-manager';
 import { macImporter } from './mac-importer';
+import { privacy } from './privacy';
 import { proxyEngine } from './proxy-engine';
 import { proxyManager } from './proxy-manager';
 import { snapshotEngine } from './snapshot-engine';
 import { templateManager } from './template-manager';
-import { vault } from './vault';
+import { type VaultExport, vault } from './vault';
 import { webRtcEngine } from './webrtc-engine';
 import { workspaceManager } from './workspace-manager';
 
 type Handler<T extends CommandType> = (
   cmd: Extract<Command, { type: T }>,
+  sender: MessageSender,
 ) => Promise<CommandResult<T>['ok'] extends true ? unknown : never> | Promise<unknown>;
+
+interface MessageSender {
+  tab?: { id?: number; cookieStoreId?: string; url?: string };
+  url?: string;
+  origin?: string;
+}
 
 export class CommandRouter {
   private readonly handlers = new Map<CommandType, Handler<CommandType>>();
@@ -51,13 +62,13 @@ export class CommandRouter {
   }
 
   attach(): void {
-    browser.runtime.onMessage.addListener((msg: unknown) => {
+    browser.runtime.onMessage.addListener((msg: unknown, sender: unknown) => {
       // Ignore broadcasts (those have __broadcast: true) — UI-side only.
       if (msg && typeof msg === 'object' && (msg as Record<string, unknown>).__broadcast) {
         return undefined;
       }
       if (!isCommand(msg)) return undefined;
-      return this.dispatch(msg);
+      return this.dispatch(msg, sender as MessageSender);
     });
   }
 
@@ -290,9 +301,22 @@ export class CommandRouter {
     this.add('vault.lock', async () => {
       vault.lock();
       proxyEngine.invalidate();
+      await lockManager.relockAll();
       await vault.syncUnlockedHint();
       void broadcast({ type: 'state.vault' });
+      void broadcast({ type: 'state.locks' });
       return { ok: true as const };
+    });
+    this.add('vault.changeMasterPassword', async (cmd) => {
+      await vault.changeMasterPassword(cmd.payload.newPassword);
+      void broadcast({ type: 'state.vault' });
+      return { ok: true as const };
+    });
+    this.add('vault.export', async () => vault.export());
+    this.add('vault.import', async (cmd) => {
+      const r = await vault.import(cmd.payload.envelope as VaultExport, cmd.payload.password);
+      void broadcast({ type: 'state.vault' });
+      return r;
     });
 
     // Fingerprint
@@ -430,22 +454,113 @@ export class CommandRouter {
       vault.setAutoLockMinutes(cmd.payload.minutes);
       return { ok: true as const };
     });
+
+    // Lock manager (PIN + per-container session unlock)
+    this.add('lock.unlock', async (cmd) => {
+      await lockManager.unlock(cmd.payload.cookieStoreId, {
+        pin: cmd.payload.pin,
+        masterPassword: cmd.payload.masterPassword,
+      });
+      void broadcast({ type: 'state.locks' });
+      return { ok: true as const };
+    });
+    this.add('lock.relock', async (cmd) => {
+      await lockManager.relock(cmd.payload.cookieStoreId);
+      void broadcast({ type: 'state.locks' });
+      return { ok: true as const };
+    });
+    this.add('lock.setPin', async (cmd) => {
+      await lockManager.setPin(cmd.payload.cookieStoreId, cmd.payload.pin);
+      void broadcast({ type: 'state.containers' });
+      return { ok: true as const };
+    });
+    this.add('lock.status', async (cmd) => {
+      const ext = await getDb().containers.get(cmd.payload.cookieStoreId);
+      return {
+        isLocked: ext?.isLocked === true,
+        isUnlockedThisSession: lockManager.isUnlockedInSession(cmd.payload.cookieStoreId),
+        hasPin: !!ext?.lockPinHash,
+      };
+    });
+
+    // Autofill (called by content script)
+    this.add('autofill.match', async (cmd, sender) => {
+      const cookieStoreId = sender.tab?.cookieStoreId ?? null;
+      if (!cookieStoreId) return [];
+      // Honor lock: a locked-but-not-unlocked container reveals nothing.
+      const ext = await getDb().containers.get(cookieStoreId);
+      if (lockManager.isEffectivelyLocked(ext)) return [];
+      return autofillResolver.match(cookieStoreId, cmd.payload.origin);
+    });
+    this.add('autofill.getSecret', async (cmd, sender) => {
+      const cookieStoreId = sender.tab?.cookieStoreId ?? '';
+      if (!cookieStoreId) throw new Error('not a tab request');
+      const ext = await getDb().containers.get(cookieStoreId);
+      if (lockManager.isEffectivelyLocked(ext)) throw new Error('container is locked');
+      const r = await autofillResolver.getSecretFor(
+        cmd.payload.id,
+        cookieStoreId,
+        cmd.payload.origin,
+      );
+      // For TOTP we generate the current code so the script never sees the
+      // long-term shared secret.
+      if (r.kind === 'totp') {
+        const code = await totp(r.secret);
+        return { secret: code, kind: r.kind };
+      }
+      return r;
+    });
+
+    // Proxy scheduling + enable/disable
+    this.add('proxy.scheduleHealth', async (cmd) => {
+      await getDb().meta.put({
+        key: 'proxy.healthIntervalMinutes',
+        value: cmd.payload.minutes,
+      });
+      await proxyEngine.ensureScheduled();
+      return { ok: true as const };
+    });
+    this.add('proxy.runScheduledHealth', async () => proxyEngine.runScheduledHealth());
+    this.add('proxy.setEnabled', async (cmd) => {
+      const fresh = await getDb().proxies.get(cmd.payload.id);
+      if (!fresh) throw new Error('proxy not found');
+      await getDb().proxies.update(cmd.payload.id, {
+        disabled: !cmd.payload.enabled,
+        consecutiveFails: cmd.payload.enabled ? 0 : fresh.consecutiveFails,
+      });
+      proxyEngine.invalidate();
+      void broadcast({ type: 'state.proxies' });
+      return { ok: true as const };
+    });
+
+    // Privacy / settings
+    this.add('settings.getPrivacy', async () => privacy.get());
+    this.add('settings.setTelemetryOptIn', async (cmd) => {
+      await privacy.setTelemetry(cmd.payload.enabled);
+      void broadcast({ type: 'state.privacy' });
+      return { ok: true as const };
+    });
+    this.add('settings.exportDebugLogs', async () => privacy.exportDebugLogs());
+
+    // Snapshot retention pruning
+    this.add('snapshot.prune', async (cmd) => autoSnapshotEngine.prune(cmd.payload.containerId));
+    this.add('snapshot.pruneAll', async () => autoSnapshotEngine.pruneAll());
   }
 
   private add<T extends CommandType>(
     type: T,
-    handler: (cmd: Extract<Command, { type: T }>) => Promise<unknown>,
+    handler: (cmd: Extract<Command, { type: T }>, sender: MessageSender) => Promise<unknown>,
   ): void {
     this.handlers.set(type, handler as Handler<CommandType>);
   }
 
-  private async dispatch(cmd: Command): Promise<CommandResult<CommandType>> {
+  private async dispatch(cmd: Command, sender: MessageSender): Promise<CommandResult<CommandType>> {
     const handler = this.handlers.get(cmd.type);
     if (!handler) {
       return { ok: false, error: `unknown command: ${cmd.type}`, code: 'INVALID_INPUT' };
     }
     try {
-      const data = await handler(cmd);
+      const data = await handler(cmd, sender);
       return { ok: true, data: data as never };
     } catch (err) {
       const { message, code } = describeError(err);

@@ -30,8 +30,7 @@ export function closestNativeColor(hex: string): ContainerColor {
     [ContainerColor, string]
   >) {
     const n = parseHex(native);
-    const d =
-      (target.r - n.r) ** 2 + (target.g - n.g) ** 2 + (target.b - n.b) ** 2;
+    const d = (target.r - n.r) ** 2 + (target.g - n.g) ** 2 + (target.b - n.b) ** 2;
     if (d < bestDist) {
       bestDist = d;
       best = name;
@@ -48,7 +47,7 @@ export function randomHexColor(): string {
     const v = bytes[i] ?? 0;
     bytes[i] = 40 + Math.floor((v / 255) * 200);
   }
-  return '#' + [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `#${[...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
 
 function parseHex(hex: string): { r: number; g: number; b: number } {

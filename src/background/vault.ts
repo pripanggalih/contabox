@@ -22,11 +22,10 @@ import {
   randomBytes,
 } from '@shared/crypto';
 import { getDb } from '@shared/db';
+import { META_VAULT_AUTOLOCK_MIN, META_VAULT_SALT, META_VAULT_VERIFIER } from '@shared/meta-keys';
 import type { VaultEntry, VaultEntryKind } from '@shared/types';
 import { now, uuid } from '@shared/utils';
 
-const SALT_KEY = 'vault.salt';
-const VERIFIER_KEY = 'vault.verifier';
 const VERIFIER_PLAIN = 'contabox-vault-v1';
 
 interface VerifierRecord extends Encrypted {
@@ -36,6 +35,7 @@ interface VerifierRecord extends Encrypted {
 export interface VaultStatus {
   initialized: boolean;
   unlocked: boolean;
+  autoLockMinutes: number;
 }
 
 export interface VaultPlainEntry {
@@ -50,12 +50,30 @@ export interface VaultPlainEntry {
   updatedAt: number;
 }
 
+/**
+ * Encrypted export envelope. Re-imported with the original master password —
+ * no plaintext leaves the vault.
+ */
+export interface VaultExport {
+  version: 1;
+  exportedAt: number;
+  /** PBKDF2 salt used for the export-time master key (same as install salt). */
+  salt: string;
+  /** Verifier blob from `meta` so importer can confirm the password. */
+  verifier: VerifierRecord;
+  entries: VaultEntry[];
+}
+
 export class Vault {
   private key: CryptoKey | null = null;
 
   async status(): Promise<VaultStatus> {
-    const salt = await getDb().meta.get(SALT_KEY);
-    return { initialized: !!salt, unlocked: this.key !== null };
+    const salt = await getDb().meta.get(META_VAULT_SALT);
+    return {
+      initialized: !!salt,
+      unlocked: this.key !== null,
+      autoLockMinutes: this.autoLockMinutes,
+    };
   }
 
   /** Initialize the vault with a fresh master password. */
@@ -67,16 +85,16 @@ export class Vault {
     const key = await deriveKey(password, salt);
     const verifier = await encryptString(key, VERIFIER_PLAIN);
 
-    await getDb().meta.put({ key: SALT_KEY, value: bytesToBase64(salt) });
-    await getDb().meta.put({ key: VERIFIER_KEY, value: verifier });
+    await getDb().meta.put({ key: META_VAULT_SALT, value: bytesToBase64(salt) });
+    await getDb().meta.put({ key: META_VAULT_VERIFIER, value: verifier });
 
     this.key = key;
   }
 
   /** Unlock with master password. Validates against verifier blob. */
   async unlock(password: string): Promise<void> {
-    const saltRow = await getDb().meta.get(SALT_KEY);
-    const verifierRow = await getDb().meta.get(VERIFIER_KEY);
+    const saltRow = await getDb().meta.get(META_VAULT_SALT);
+    const verifierRow = await getDb().meta.get(META_VAULT_VERIFIER);
     if (!saltRow || !verifierRow) {
       throw new Error('vault not initialized');
     }
@@ -89,6 +107,8 @@ export class Vault {
       throw new Error('wrong password');
     }
     this.key = key;
+    await this.loadAutoLockFromMeta();
+    this.scheduleAutoLock();
   }
 
   lock(): void {
@@ -176,7 +196,14 @@ export class Vault {
 
   setAutoLockMinutes(min: number): void {
     this.autoLockMinutes = Math.max(0, min);
+    void getDb().meta.put({ key: META_VAULT_AUTOLOCK_MIN, value: this.autoLockMinutes });
     this.scheduleAutoLock();
+  }
+
+  private async loadAutoLockFromMeta(): Promise<void> {
+    const row = await getDb().meta.get(META_VAULT_AUTOLOCK_MIN);
+    const v = Number(row?.value ?? 15);
+    if (Number.isFinite(v) && v >= 0) this.autoLockMinutes = v;
   }
 
   /**
@@ -196,6 +223,100 @@ export class Vault {
       },
       this.autoLockMinutes * 60 * 1000,
     );
+  }
+
+  /* ---------- master password change ---------- */
+
+  /**
+   * Re-encrypt every vault entry under a new master password. Vault MUST be
+   * unlocked first; we ignore the old password parameter unless the caller
+   * provides it for double-confirmation purposes.
+   */
+  async changeMasterPassword(newPassword: string): Promise<void> {
+    if (!this.key) throw new Error('vault locked — unlock first');
+    if (newPassword.length < 8) throw new Error('master password must be ≥ 8 characters');
+
+    // Decrypt all entries with current key.
+    const rows = await getDb().vault.toArray();
+    const plaintexts: Array<{ id: string; secret: string }> = [];
+    for (const row of rows) {
+      try {
+        const secret = await decryptString(this.key, { cipher: row.cipher, iv: row.iv });
+        plaintexts.push({ id: row.id, secret });
+      } catch (err) {
+        throw new Error(`failed to decrypt entry ${row.id} during rekey: ${String(err)}`);
+      }
+    }
+
+    // Derive new key with fresh salt + verifier.
+    const newSalt = randomBytes(SALT_LEN);
+    const newKey = await deriveKey(newPassword, newSalt);
+    const newVerifier = await encryptString(newKey, VERIFIER_PLAIN);
+
+    // Re-encrypt each entry with the new key, write back atomically.
+    const updates: VaultEntry[] = [];
+    for (const { id, secret } of plaintexts) {
+      const enc = await encryptString(newKey, secret);
+      const existing = rows.find((r) => r.id === id);
+      if (!existing) continue;
+      updates.push({ ...existing, cipher: enc.cipher, iv: enc.iv, updatedAt: now() });
+    }
+
+    await getDb().transaction('rw', getDb().vault, getDb().meta, async () => {
+      await getDb().meta.put({ key: META_VAULT_SALT, value: bytesToBase64(newSalt) });
+      await getDb().meta.put({ key: META_VAULT_VERIFIER, value: newVerifier });
+      if (updates.length > 0) await getDb().vault.bulkPut(updates);
+    });
+
+    this.key = newKey;
+    this.scheduleAutoLock();
+  }
+
+  /* ---------- export / import ---------- */
+
+  /**
+   * Export the encrypted vault as-is. The output includes the salt and the
+   * verifier so a fresh installation can decrypt with the same password.
+   * No plaintext leaves this function.
+   */
+  async export(): Promise<VaultExport> {
+    const saltRow = await getDb().meta.get(META_VAULT_SALT);
+    const verifierRow = await getDb().meta.get(META_VAULT_VERIFIER);
+    if (!saltRow || !verifierRow) throw new Error('vault not initialized');
+    const entries = await getDb().vault.toArray();
+    return {
+      version: 1,
+      exportedAt: now(),
+      salt: saltRow.value as string,
+      verifier: verifierRow.value as VerifierRecord,
+      entries,
+    };
+  }
+
+  /**
+   * Import an export envelope. Replaces local salt + verifier + vault rows
+   * with the imported set. The user must supply the master password used at
+   * export time so we can validate the verifier before committing.
+   */
+  async import(envelope: VaultExport, password: string): Promise<{ imported: number }> {
+    if (envelope.version !== 1) throw new Error('unsupported export version');
+
+    const salt = base64ToBytes(envelope.salt);
+    const key = await deriveKey(password, salt);
+    const probe = await decryptString(key, envelope.verifier).catch(() => null);
+    if (probe !== VERIFIER_PLAIN) throw new Error('wrong password for this export');
+
+    await getDb().transaction('rw', getDb().vault, getDb().meta, async () => {
+      await getDb().vault.clear();
+      await getDb().meta.put({ key: META_VAULT_SALT, value: envelope.salt });
+      await getDb().meta.put({ key: META_VAULT_VERIFIER, value: envelope.verifier });
+      if (envelope.entries.length > 0) {
+        await getDb().vault.bulkPut(envelope.entries);
+      }
+    });
+
+    this.key = key;
+    return { imported: envelope.entries.length };
   }
 }
 

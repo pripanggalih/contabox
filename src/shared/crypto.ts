@@ -44,6 +44,7 @@ export async function importPasswordKey(password: string): Promise<CryptoKey> {
   const enc = new TextEncoder().encode(password);
   return crypto.subtle.importKey('raw', enc as BufferSource, { name: 'PBKDF2' }, false, [
     'deriveKey',
+    'deriveBits',
   ]);
 }
 

@@ -24,14 +24,21 @@ export default defineConfig({
         popup: resolve(__dirname, 'src/popup/index.html'),
         options: resolve(__dirname, 'src/options/index.html'),
         background: resolve(__dirname, 'src/background/index.ts'),
+        'content-autofill': resolve(__dirname, 'src/content/autofill.ts'),
       },
       output: {
         entryFileNames: (chunk) => {
           if (chunk.name === 'background') return 'background.js';
+          if (chunk.name === 'content-autofill') return 'content/autofill.js';
           return 'assets/[name]-[hash].js';
         },
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash][extname]',
+        // Content scripts cannot use ES module imports inside Firefox's content
+        // script context — bundle each entry as a self-contained IIFE so the
+        // generated file works when loaded via `content_scripts`.
+        manualChunks: undefined,
+        inlineDynamicImports: false,
       },
     },
   },
