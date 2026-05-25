@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Allow manual dispatch as a safety valve.
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: 'AMO channel'
+        required: true
+        default: 'listed'
+        type: choice
+        options:
+          - listed
+          - unlisted
+
+# Only let one release run at a time. Cancel-in-progress is OFF deliberately —
+# we do NOT want to abort a half-submitted AMO upload.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required for creating GitHub Releases
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify version sync
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          MANIFEST_VERSION=$(node -p "require('./public/manifest.json').version")
+          if [ "$PKG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "::error::package.json ($PKG_VERSION) and manifest.json ($MANIFEST_VERSION) drift. Run pnpm version:bump."
+            exit 1
+          fi
+          # If triggered by a tag, the tag must equal v$PKG_VERSION.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            EXPECTED="v$PKG_VERSION"
+            if [ "${GITHUB_REF_NAME}" != "$EXPECTED" ]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match package version ($EXPECTED)."
+              exit 1
+            fi
+          fi
+          echo "version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
+        id: version
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build:prod
+
+      - name: web-ext lint (manifest sanity)
+        # Non-blocking; some warnings are intentional (e.g. broad <all_urls>).
+        run: pnpm exec web-ext lint --source-dir=dist || true
+
+      - name: Build unsigned XPI (artifact)
+        run: pnpm exec web-ext build --source-dir=dist --artifacts-dir=web-ext-artifacts --overwrite-dest
+
+      - name: Determine AMO channel
+        id: channel
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=listed" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sign + submit to AMO
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
+            echo "::error::AMO_JWT_ISSUER / AMO_JWT_SECRET secrets are not set in this repo."
+            exit 1
+          fi
+          pnpm exec web-ext sign \
+            --source-dir=dist \
+            --artifacts-dir=web-ext-artifacts \
+            --channel=${{ steps.channel.outputs.value }} \
+            --api-key="$AMO_JWT_ISSUER" \
+            --api-secret="$AMO_JWT_SECRET"
+
+      - name: Upload XPI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: contabox-${{ steps.version.outputs.version }}-xpi
+          path: |
+            web-ext-artifacts/*.xpi
+            web-ext-artifacts/*.zip
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Create GitHub Release (only on tag)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            web-ext-artifacts/*.xpi
+            web-ext-artifacts/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

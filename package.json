@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "tsc --noEmit && vite build",
+    "build:prod": "tsc --noEmit && cross-env NODE_ENV=production vite build",
     "preview": "vite preview",
-    "package": "pnpm build && web-ext build --source-dir=dist --artifacts-dir=web-ext-artifacts --overwrite-dest",
+    "package": "pnpm build:prod && web-ext build --source-dir=dist --artifacts-dir=web-ext-artifacts --overwrite-dest",
     "web-ext": "web-ext run --source-dir=dist --target=firefox-desktop",
     "lint": "biome check .",
     "format": "biome format --write .",
@@ -16,7 +17,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "version:bump": "node scripts/bump-version.mjs",
+    "sign:listed": "pnpm build:prod && web-ext sign --source-dir=dist --artifacts-dir=web-ext-artifacts --channel=listed --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JWT_SECRET",
+    "sign:unlisted": "pnpm build:prod && web-ext sign --source-dir=dist --artifacts-dir=web-ext-artifacts --channel=unlisted --api-key=$AMO_JWT_ISSUER --api-secret=$AMO_JWT_SECRET",
+    "lint:ext": "web-ext lint --source-dir=dist"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -48,6 +53,7 @@
     "@types/react-dom": "^18.3.1",
     "@types/webextension-polyfill": "^0.12.1",
     "@vitejs/plugin-react": "^4.3.3",
+    "cross-env": "^10.1.0",
     "fake-indexeddb": "^6.0.0",
     "jsdom": "^25.0.1",
     "tailwindcss": "^4.0.0-beta.4",

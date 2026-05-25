@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <!-- Brand: stacked container layers, signalling isolation + grouping. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5b8def"/>
+      <stop offset="1" stop-color="#3c5fb5"/>
+    </linearGradient>
+    <linearGradient id="layer" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.78"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- Three offset cards = "containers" -->
+  <rect x="22" y="34" width="84" height="22" rx="6" fill="url(#layer)"/>
+  <rect x="22" y="60" width="84" height="22" rx="6" fill="url(#layer)" opacity="0.85"/>
+  <rect x="22" y="86" width="84" height="22" rx="6" fill="url(#layer)" opacity="0.7"/>
+  <!-- Subtle accent dots -->
+  <circle cx="32" cy="45" r="3" fill="#3c5fb5"/>
+  <circle cx="32" cy="71" r="3" fill="#3c5fb5"/>
+  <circle cx="32" cy="97" r="3" fill="#3c5fb5"/>
+</svg>

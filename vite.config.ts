@@ -16,7 +16,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    sourcemap: true,
+    // Sourcemaps in dev only. Public AMO releases ship without them so the
+    // signed XPI is smaller and original module structure isn't shipped to
+    // every user.
+    sourcemap: process.env.NODE_ENV !== 'production',
     target: 'firefox115',
     rollupOptions: {
       input: {
