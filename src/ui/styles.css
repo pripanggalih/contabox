@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: hsl(0 0% 100%);
+  --color-bg-elevated: hsl(0 0% 98%);
+  --color-bg-hover: hsl(0 0% 95%);
+  --color-border: hsl(0 0% 88%);
+  --color-text-primary: hsl(0 0% 10%);
+  --color-text-muted: hsl(0 0% 45%);
+  --color-accent: hsl(212 100% 50%);
+  --color-accent-hover: hsl(212 100% 45%);
+  --color-danger: hsl(0 84% 60%);
+  --color-success: hsl(142 71% 45%);
+  --color-warning: hsl(38 92% 50%);
+
+  --color-container-blue: hsl(212 100% 50%);
+  --color-container-turquoise: hsl(180 80% 45%);
+  --color-container-green: hsl(142 71% 45%);
+  --color-container-yellow: hsl(48 96% 53%);
+  --color-container-orange: hsl(28 95% 55%);
+  --color-container-red: hsl(0 84% 60%);
+  --color-container-pink: hsl(330 81% 60%);
+  --color-container-purple: hsl(270 70% 60%);
+  --color-container-toolbar: hsl(0 0% 50%);
+}
+
+/* Dark scheme overrides — flat custom-property reassignment.
+ * Tailwind v4's @theme is top-level only and cannot be nested in @media. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-primary: hsl(0 0% 11%);
+    --color-bg-elevated: hsl(0 0% 14%);
+    --color-bg-hover: hsl(0 0% 18%);
+    --color-border: hsl(0 0% 22%);
+    --color-text-primary: hsl(0 0% 95%);
+    --color-text-muted: hsl(0 0% 60%);
+    --color-accent: hsl(212 100% 60%);
+    --color-accent-hover: hsl(212 100% 65%);
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    transition-duration: 0s !important;
+  }
+}
+
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}

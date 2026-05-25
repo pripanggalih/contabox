@@ -1,0 +1,42 @@
+import { resolve } from 'node:path';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      '@shared': resolve(__dirname, 'src/shared'),
+      '@bg': resolve(__dirname, 'src/background'),
+      '@ui': resolve(__dirname, 'src/ui'),
+    },
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: true,
+    target: 'firefox115',
+    rollupOptions: {
+      input: {
+        sidebar: resolve(__dirname, 'src/sidebar/index.html'),
+        popup: resolve(__dirname, 'src/popup/index.html'),
+        options: resolve(__dirname, 'src/options/index.html'),
+        background: resolve(__dirname, 'src/background/index.ts'),
+      },
+      output: {
+        entryFileNames: (chunk) => {
+          if (chunk.name === 'background') return 'background.js';
+          return 'assets/[name]-[hash].js';
+        },
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
+});

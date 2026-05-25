@@ -1,0 +1,11 @@
+node_modules
+dist
+web-ext-artifacts
+playwright-report
+test-results
+.DS_Store
+*.log
+.env
+.env.local
+.vite
+coverage

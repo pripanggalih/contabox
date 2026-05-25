@@ -1,0 +1,91 @@
+/**
+ * Background entry point.
+ *
+ * Wires the command router and listens for shortcut / install events.
+ * Keep this file thin — actual logic lives in per-engine modules.
+ */
+import { browser } from '@shared/browser';
+import { autoRuleEngine } from './auto-rule-engine';
+import { commandRouter } from './command-router';
+import { fingerprintEngine } from './fingerprint-engine';
+import { macImporter } from './mac-importer';
+import { proxyEngine } from './proxy-engine';
+import { webRtcEngine } from './webrtc-engine';
+
+// Attach the message router FIRST so the UI can talk to BG even if other
+// engines fail to initialize. Anything below is best-effort.
+commandRouter.attach();
+
+// Idempotent — adopts any native container Contabox doesn't yet know into
+// the "Firefox Default" workspace. Runs on every startup so containers
+// created via about:preferences or Multi-Account Containers don't land in
+// the orphan bucket.
+macImporter.import().catch((err) => {
+  console.warn('[contabox] macImporter.import failed', err);
+});
+
+try {
+  proxyEngine.attach();
+} catch (err) {
+  console.warn('[contabox] proxyEngine.attach failed', err);
+}
+fingerprintEngine.attach().catch((err) => {
+  console.warn('[contabox] fingerprintEngine.attach failed', err);
+});
+autoRuleEngine.attach().catch((err) => {
+  console.warn('[contabox] autoRuleEngine.attach failed', err);
+});
+webRtcEngine.apply().catch((err) => {
+  console.warn('[contabox] webRtcEngine.apply failed', err);
+});
+
+// Adopt newly-created native containers as they appear (e.g. user adds
+// "Crypto" container in about:preferences#general while Contabox is running).
+browser.contextualIdentities.onCreated.addListener(() => {
+  void macImporter.import().catch(() => undefined);
+});
+
+browser.runtime.onInstalled.addListener((details) => {
+  console.info('[contabox] onInstalled', details.reason);
+});
+
+browser.runtime.onStartup.addListener(() => {
+  console.info('[contabox] onStartup');
+});
+
+// Shortcut → broadcast to UI surfaces. Sidebar listens and opens the palette.
+browser.commands.onCommand.addListener(async (name) => {
+  switch (name) {
+    case 'open-palette':
+      await dispatchUiEvent({ type: 'ui.openPalette' });
+      break;
+    case 'new-container':
+      await dispatchUiEvent({ type: 'ui.newContainer' });
+      break;
+    case 'lock-all':
+      try {
+        const { containerManager } = await import('./container-manager');
+        const r = await containerManager.lockAll();
+        await dispatchUiEvent({ type: 'ui.lockAll' });
+        console.info('[contabox] lockAll:', r.count);
+      } catch (err) {
+        console.warn('[contabox] lockAll failed', err);
+      }
+      break;
+    default:
+      // _execute_sidebar_action handled natively
+      break;
+  }
+});
+
+interface UiEvent {
+  type: 'ui.openPalette' | 'ui.newContainer' | 'ui.lockAll';
+}
+
+async function dispatchUiEvent(event: UiEvent): Promise<void> {
+  try {
+    await browser.runtime.sendMessage({ __ui: true, ...event });
+  } catch {
+    /* no listeners — fine */
+  }
+}
