@@ -2,7 +2,7 @@ import { browser } from '@shared/browser';
 import { invoke } from '@shared/messaging';
 import type { ContainerView } from '@shared/types';
 import { useEffect, useState } from 'react';
-import { displayHex, iconComponent } from '../sidebar/lib/palette';
+import { displayHex, displayIcon } from '../sidebar/lib/palette';
 
 export function Popup() {
   const [activeContainer, setActiveContainer] = useState<ContainerView | null>(null);
@@ -42,7 +42,7 @@ export function Popup() {
 }
 
 function ActiveContainerCard({ view, url }: { view: ContainerView; url: string }) {
-  const Icon = iconComponent(view.icon);
+  const Icon = displayIcon(view);
   return (
     <div className="rounded-md border border-[var(--color-border)] p-2">
       <div className="flex items-center gap-2">

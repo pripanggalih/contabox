@@ -52,6 +52,7 @@ describe('ContainerManager', () => {
       color: 'green',
       icon: 'briefcase',
       randomColor: false,
+      randomIcon: false,
     });
     expect(created).toHaveLength(5);
     expect(created.map((c) => c.name)).toEqual([

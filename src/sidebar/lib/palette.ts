@@ -1,16 +1,22 @@
 /**
  * Color/icon palettes mirroring Firefox's `contextualIdentities` enums.
  *
- * Firefox accepts only 9 named colors at the API level. To give users richer
- * choice without losing the native tab-strip indicator, we expose:
- *   - NATIVE_COLORS  → the 9 names + their hex values
- *   - EXTENDED_HEXES → 24 curated hex swatches for sidebar/popup display
- *   - randomHex()    → uniformly random hex
- *   - closestNative()→ snap any hex to the nearest native enum so the tab-strip
- *                      indicator still looks reasonable
+ * Firefox accepts only 9 named colors and 13 named icons at the API level. To
+ * give users richer choice without losing the native tab-strip indicator, we
+ * expose:
+ *   - NATIVE_COLORS   → the 9 names + their hex values
+ *   - EXTENDED_HEXES  → 24 curated hex swatches for sidebar/popup display
+ *   - randomHex()     → uniformly random hex
+ *   - closestNative() → snap any hex to the nearest native enum so the
+ *                       tab-strip indicator still looks reasonable
+ *   - displayIcon()   → resolve any Lucide icon name override; falls back to
+ *                       the native 13-value icon enum
+ *   - lookupLucideIcon() → look up a Lucide icon component by PascalCase name
  */
 import type { ContainerColor, ContainerIcon } from '@shared/types';
+import { CUSTOM_ICON_NAMES, randomLucideIcon } from '@shared/icons';
 import {
+  // Native enum components (13).
   Briefcase,
   CircleDollarSign,
   Citrus,
@@ -24,6 +30,105 @@ import {
   Palmtree,
   ShoppingCart,
   TreeDeciduous,
+  // Curated extras (~100). Pulling explicit names lets esbuild tree-shake the
+  // ~1500-icon library down to only what we ship.
+  Anchor,
+  Apple,
+  Award,
+  Banknote,
+  Beer,
+  Bell,
+  Bird,
+  BookOpen,
+  Bookmark,
+  Brush,
+  Bug,
+  Building2,
+  Calendar,
+  Camera,
+  Car,
+  ClipboardList,
+  Clock,
+  Cloud,
+  Code,
+  Coins,
+  Compass,
+  Cpu,
+  CreditCard,
+  Crown,
+  Database,
+  Diamond,
+  Dog,
+  Eye,
+  FileText,
+  Film,
+  Fish,
+  Flag,
+  Flame,
+  Flower,
+  Folder,
+  Gamepad2,
+  Gem,
+  Globe,
+  GraduationCap,
+  HardDrive,
+  Headphones,
+  Heart,
+  Home,
+  Hospital,
+  Image,
+  Key,
+  Laptop,
+  Leaf,
+  Lightbulb,
+  Lock,
+  Mail,
+  Map,
+  MapPin,
+  MessageCircle,
+  Mic,
+  Monitor,
+  Moon,
+  Music,
+  Newspaper,
+  Notebook,
+  Package,
+  Palette,
+  Pencil,
+  Phone,
+  PiggyBank,
+  Pin,
+  Pizza,
+  Plane,
+  Rocket,
+  School,
+  Send,
+  Server,
+  Shield,
+  ShoppingBag,
+  Smile,
+  Sparkles,
+  Sprout,
+  Star,
+  Store,
+  Sun,
+  Tag,
+  Target,
+  Terminal,
+  ThumbsUp,
+  Train,
+  TrendingUp,
+  Trophy,
+  Truck,
+  Unlock,
+  User,
+  Users,
+  Utensils,
+  Video,
+  Wallet,
+  Wine,
+  Wrench,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -168,4 +273,157 @@ const ICON_MAP: Record<ContainerIcon, LucideIcon> = {
 
 export function iconComponent(name: ContainerIcon): LucideIcon {
   return ICON_MAP[name];
+}
+
+/**
+ * Curated catalog of Lucide icons exposed to users as "custom icons".
+ *
+ * The list of *names* is the source of truth (`@shared/icons`), so background
+ * code and validators can use it without pulling lucide-react. Here we map
+ * each name to its component. Importing the components by name (rather than
+ * a wildcard import) lets esbuild tree-shake the ~1500-icon library down to
+ * just these.
+ */
+const COMPONENTS: Record<string, LucideIcon> = {
+  // People & social
+  User,
+  Users,
+  Heart,
+  ThumbsUp,
+  Smile,
+  MessageCircle,
+  Mail,
+  Send,
+  Phone,
+  Bell,
+
+  // Work & productivity
+  Building2,
+  Home,
+  School,
+  Hospital,
+  Store,
+  Calendar,
+  Clock,
+  ClipboardList,
+  FileText,
+  Folder,
+  Notebook,
+  BookOpen,
+  Pencil,
+  Bookmark,
+  Tag,
+  Pin,
+  Flag,
+  Target,
+  TrendingUp,
+  Award,
+  Trophy,
+  Crown,
+  GraduationCap,
+  Newspaper,
+
+  // Money & shopping
+  Banknote,
+  Coins,
+  CreditCard,
+  Wallet,
+  PiggyBank,
+  ShoppingBag,
+  Package,
+  Truck,
+
+  // Tech & dev
+  Code,
+  Terminal,
+  Cpu,
+  Server,
+  Database,
+  HardDrive,
+  Laptop,
+  Monitor,
+  Cloud,
+  Globe,
+  Key,
+  Lock,
+  Unlock,
+  Shield,
+  Eye,
+  Zap,
+  Bug,
+  Wrench,
+
+  // Media & creativity
+  Camera,
+  Image,
+  Video,
+  Film,
+  Music,
+  Headphones,
+  Mic,
+  Gamepad2,
+  Palette,
+  Brush,
+  Sparkles,
+  Lightbulb,
+  Star,
+  Gem,
+  Diamond,
+
+  // Travel & place
+  Plane,
+  Car,
+  Train,
+  Rocket,
+  Anchor,
+  Compass,
+  Map,
+  MapPin,
+
+  // Food & life
+  Apple,
+  Pizza,
+  Utensils,
+  Beer,
+  Wine,
+
+  // Nature & animals
+  Sun,
+  Moon,
+  Flame,
+  Leaf,
+  Sprout,
+  Flower,
+  Bird,
+  Dog,
+  Fish,
+};
+
+/** Catalog ordered by `CUSTOM_ICON_NAMES` (the shared source of truth). */
+export const CUSTOM_ICON_CATALOG: Record<string, LucideIcon> = Object.fromEntries(
+  CUSTOM_ICON_NAMES.filter((n) => n in COMPONENTS).map((n) => [n, COMPONENTS[n] as LucideIcon]),
+);
+
+// Re-export so callers in the sidebar can keep importing icon helpers from
+// one place (palette.ts) without reaching into @shared.
+export { randomLucideIcon };
+
+/** Resolve a Lucide icon by its PascalCase name from the curated catalog.
+ *  Returns null when the name isn't in the catalog (caller falls back to the
+ *  native `ContainerIcon` mapping). */
+export function lookupLucideIcon(name: string): LucideIcon | null {
+  return CUSTOM_ICON_CATALOG[name] ?? null;
+}
+
+/** Pick the right display icon for a container row. Custom Lucide name wins,
+ *  falling back to the native enum mapping. Mirrors `displayHex`. */
+export function displayIcon(view: {
+  icon: ContainerIcon;
+  ext: { customIcon?: string };
+}): LucideIcon {
+  if (view.ext.customIcon) {
+    const found = lookupLucideIcon(view.ext.customIcon);
+    if (found) return found;
+  }
+  return ICON_MAP[view.icon];
 }

@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite build --watch --mode development",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "package": "pnpm build && web-ext build --source-dir=dist --artifacts-dir=web-ext-artifacts --overwrite-dest",
@@ -34,6 +34,7 @@
     "zod": "^3.23.8",
     "zustand": "^4.5.5"
   },
+  "packageManager": "pnpm@10.14.0",
   "pnpm": {
     "onlyBuiltDependencies": ["@biomejs/biome", "esbuild"]
   },
