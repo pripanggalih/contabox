@@ -7,6 +7,7 @@
 import { browser } from '@shared/browser';
 import { autoRuleEngine } from './auto-rule-engine';
 import { commandRouter } from './command-router';
+import { containerManager } from './container-manager';
 import { fingerprintEngine } from './fingerprint-engine';
 import { macImporter } from './mac-importer';
 import { proxyEngine } from './proxy-engine';
@@ -64,7 +65,6 @@ browser.commands.onCommand.addListener(async (name) => {
       break;
     case 'lock-all':
       try {
-        const { containerManager } = await import('./container-manager');
         const r = await containerManager.lockAll();
         await dispatchUiEvent({ type: 'ui.lockAll' });
         console.info('[contabox] lockAll:', r.count);
