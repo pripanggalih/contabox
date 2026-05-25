@@ -4,6 +4,7 @@ public-pages
 web-ext-artifacts
 playwright-report
 test-results
+.playwright-mcp
 .DS_Store
 *.log
 .env

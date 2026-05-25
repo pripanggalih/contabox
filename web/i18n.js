@@ -20,121 +20,114 @@
 /** @type {{ id: Record<string, string>, en: Record<string, string> }} */
 const DICTIONARY = {
   id: {
-    'meta.title': 'Contabox — Container Firefox untuk yang menjalankan banyak identitas',
+    'meta.title': 'Contabox — banyak akun, satu Firefox',
     'meta.description':
-      'Contabox adalah pengelola container Firefox untuk multi-identitas: bulk operasi, proxy dan fingerprint per-container, vault terenkripsi, snapshot, serta auto-rules.',
-    'a11y.skip': 'Lewati ke bagian instalasi',
+      'Pakai puluhan akun di Firefox tanpa repot. Container dengan proxy, fingerprint, dan vault sendiri-sendiri. Lokal di mesin kamu, gratis, dan open source.',
+    'meta.ogTitle': 'Contabox — banyak akun, satu Firefox',
+    'meta.ogDescription':
+      'Container dengan proxy, fingerprint, dan vault sendiri-sendiri. Lokal di mesin kamu.',
+
+    'a11y.skip': 'Lompat ke bagian pasang',
     'a11y.brand': 'Beranda Contabox',
 
-    'brand.tagline': 'Container Firefox, level operator',
+    'brand.tagline': 'Container Firefox, dipakai serius',
 
     'nav.features': 'Fitur',
     'nav.privacy': 'Privasi',
     'nav.release': 'Update',
 
-    'badge.signed': 'Build mandiri tertandatangani',
+    'badge.signed': 'Build resmi tertandatangani',
 
-    'hero.title': 'Container Firefox untuk yang menjalankan banyak identitas sekaligus.',
+    'hero.title': 'Banyak akun, satu Firefox.',
     'hero.body':
-      'Buat banyak profil terisolasi sekali jalan, ikat masing-masing ke proxy dan fingerprint, simpan kredensial di vault terenkripsi, snapshot sesi, lalu buka kembali workspace persis seperti sebelumnya. Tanpa akun, tanpa server, dan tanpa telemetri secara default.',
+      'Bikin container baru sekaligus banyak, kasih masing-masing proxy dan fingerprint sendiri, simpan password di vault terenkripsi, lalu lanjutkan kerjaan kapan saja. Semuanya tinggal di mesin kamu — tanpa akun, server, atau langganan.',
     'hero.installCta': 'Pasang di Firefox',
-    'hero.notesCta': 'Lihat catatan rilis',
+    'hero.notesCta': 'Catatan rilis',
     'hero.warning':
-      'Pada pemasangan pertama Firefox akan menampilkan peringatan generik untuk add-on signed-tetapi-unlisted. Klik <strong class="text-ink">Continue to install</strong> → <strong class="text-ink">Add</strong>. Setelah itu pembaruan berjalan otomatis.',
+      'Pertama kali pasang, Firefox bakal nampilin peringatan biasa untuk add-on di luar daftar AMO. Klik <strong class="text-ink">Continue to install</strong> → <strong class="text-ink">Add</strong>. Setelah itu update jalan sendiri.',
 
-    'preview.workspaces': 'Workspaces',
-    'preview.affiliate': 'Affiliate',
-    'preview.research': 'Research',
-    'preview.crypto': 'Crypto',
-    'preview.selectedContainer': 'Container terpilih',
-    'preview.unlocked': 'Terbuka',
-    'preview.proxy': 'Proxy',
-    'preview.fingerprint': 'Fingerprint',
-    'preview.vault': 'Vault',
-    'preview.vaultValue': '3 entri · TOTP',
-    'preview.snapshot': 'Snapshot',
-    'preview.snapshotValue': 'Otomatis · 30 hari',
-    'preview.bulkAction': 'Aksi massal',
-    'preview.bulkOpen': 'Buka URL di 38 container',
-    'preview.bulkProxy': 'Pasang proxy',
-    'preview.bulkSnapshot': 'Snapshot semua',
+    'preview.contentArea': 'Tab terbuka di container terpilih',
+    'preview.figcaption': 'Tampilan asli Contabox dipasang di Firefox.',
 
-    'strip.signed.label': 'Tertandatangani',
-    'strip.signed.value': 'Mozilla AMO · channel unlisted',
-    'strip.updates.label': 'Pembaruan',
-    'strip.updates.value': 'Channel via GitHub Pages',
+    'strip.local.label': 'Lokal',
+    'strip.local.value': 'Datamu tidak ke mana-mana',
+    'strip.updates.label': 'Update',
+    'strip.updates.value': 'Otomatis lewat Firefox',
     'strip.license.label': 'Lisensi',
-    'strip.license.value': 'MIT · local-first',
+    'strip.license.value': 'MIT, gratis selamanya',
 
-    'features.kicker': 'Apa yang digantikan',
-    'features.title': 'Alat container untuk yang sudah berhenti menghitung di akun ke lima.',
+    'features.kicker': 'Yang sehari-hari kamu butuhkan',
+    'features.title': 'Firefox kasih isolasi. Contabox kasih kontrolnya.',
     'features.body':
-      'Firefox memberi isolasi. Contabox menambahkan operasi: buat, buka, proxy, fingerprint, snapshot, dan kunci container sebagai grup.',
+      'Buat, buka, kunci, atau kasih proxy ke puluhan container sekaligus. Bukan satu-satu lewat menu kanan klik.',
 
-    'feature.bulk.title': 'Bulk container ops',
+    'feature.bulk.title': 'Operasi massal',
     'feature.bulk.body':
-      'Buat <code class="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-sm">affiliate-{n:03}</code> sekaligus, buka satu URL di seluruh akun, beri tag, hibernasi, atau hapus pilihan tanpa kerja tab demi tab.',
-    'feature.proxy.title': 'Proxy + fingerprint',
+      'Bikin <code class="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-sm">affiliate-{n:03}</code> sekaligus 100 biji, buka satu URL di semua container, beri tag, hibernasi, atau hapus pilihan — tanpa kerja tab demi tab.',
+    'feature.proxy.title': 'Proxy & fingerprint per container',
     'feature.proxy.body':
-      'Ikat container ke proxy SOCKS atau HTTP, rotasi pool, periksa kesehatan endpoint, dan terapkan profil UA, canvas, WebGL, audio, serta timezone yang berbeda per container.',
-    'feature.vault.title': 'Vault + autofill',
+      'Tiap container punya proxy dan fingerprint sendiri. Ada rotasi pool, health check terjadwal, plus override UA, canvas, WebGL, audio, dan timezone — semuanya per container.',
+    'feature.vault.title': 'Vault & autofill',
     'feature.vault.body':
-      'Vault AES-GCM, generator TOTP, dan autofill di shadow DOM tertutup yang scoped per origin × container. Halaman tidak pernah melihat secret jangka panjang.',
-    'feature.snapshot.title': 'Snapshot + lock',
+      'Password dan TOTP terenkripsi AES-GCM. Autofill cuma muncul di container yang sesuai. Halaman web tidak pernah lihat secret jangka panjang — yang sampai ke sana cuma satu kode sekali pakai.',
+    'feature.snapshot.title': 'Snapshot & kunci',
     'feature.snapshot.body':
-      'Tangkap cookies, storage, dan IndexedDB opsional. Auto-snapshot saat container idle atau sebelum dihapus. Sembunyikan tab yang dikunci hingga PIN atau master password dimasukkan.',
+      'Tangkap cookies, storage, dan IndexedDB kalau perlu. Auto-snapshot pas container nganggur. Kunci container sensitif pakai PIN — tabnya hilang dari sidebar sampai dibuka lagi.',
 
-    'surface.kicker': 'Permukaan fitur',
-    'surface.title': 'Dirancang untuk alur kerja, bukan demo coba-coba.',
+    'surface.kicker': 'Plus yang lain',
+    'surface.title': 'Dipakai untuk kerja, bukan untuk pajangan demo.',
     'surface.item1': 'Command palette · pencarian fuzzy · tag',
-    'surface.item2': 'Workspaces · template · bulk create',
-    'surface.item3': 'Proxy pool · cooldown · auto-disable',
+    'surface.item2': 'Workspace · template · bulk create',
+    'surface.item3': 'Pool proxy · cooldown · auto-disable',
     'surface.item4': 'Preset fingerprint · header rewrite',
-    'surface.item5': 'Vault terenkripsi · entri password / TOTP / catatan',
-    'surface.item6': 'Editor cookie · impor / ekspor Netscape dan JSON',
-    'surface.item7': 'Auto-rules · routing substring / glob / regex',
-    'surface.item8': 'Backup terenkripsi · update aman terhadap skema',
+    'surface.item5': 'Vault terenkripsi: password, TOTP, catatan',
+    'surface.item6': 'Editor cookie: impor & ekspor Netscape, JSON',
+    'surface.item7': 'Auto-rules: substring, glob, regex',
+    'surface.item8': 'Backup terenkripsi · update tanpa wipe data',
 
-    'privacy.kicker': 'Sikap privasi',
-    'privacy.title': 'Lokal sebagai default, eksplisit ketika tidak.',
+    'privacy.kicker': 'Soal privasi',
+    'privacy.title': 'Tinggal di mesin kamu. Titik.',
     'privacy.body':
-      'Tidak ada akun, tidak ada backend, tidak ada telemetri default. Status browsing dan vault tinggal di IndexedDB Firefox di mesinmu, di bawah ID add-on yang permanen.',
-    'privacy.bg.title': 'Kunci vault tinggal di background',
+      'Tidak ada akun, tidak ada server backend, tidak ada telemetri default. Semua datanya — container, vault, snapshot — disimpan di IndexedDB Firefox. Uninstall extension-nya, semuanya ikut kebuang.',
+    'privacy.bg.title': 'Master password tidak ke mana-mana',
     'privacy.bg.body':
-      'Content script hanya menerima satu rahasia jangka pendek per fill, tidak pernah master key.',
-    'privacy.network.title': 'Tanpa panggilan jaringan diam-diam',
+      'Master password kamu tidak pernah masuk ke content script atau halaman web. Yang dikirim cuma kode sekali pakai untuk autofill.',
+    'privacy.network.title': 'Tanpa koneksi diam-diam',
     'privacy.network.body':
-      'Hanya health-check proxy dan telemetri opt-in yang meninggalkan mesinmu.',
-    'privacy.migration.title': 'Migrasi forward-only',
+      'Cuma health check proxy dan telemetri (kalau diaktifkan) yang menyentuh internet. Sisanya offline.',
+    'privacy.migration.title': 'Update tidak menghapus data',
     'privacy.migration.body':
-      'Update patch dan minor mempertahankan setiap baris yang sudah tersimpan. Perubahan breaking butuh major dan backup paksa.',
-    'privacy.mit.title': 'Lisensi MIT',
+      'Patch dan minor update menambah skema, tidak pernah memotongnya. Perubahan besar wajib backup paksa dulu.',
+    'privacy.mit.title': 'Open source MIT',
     'privacy.mit.body':
-      'Kode terbuka, threat model terdokumentasi, alur rilis yang dapat direproduksi.',
+      'Kode terbuka, threat model didokumentasikan, build bisa direproduksi siapa pun.',
 
     'release.kicker': 'Pasang sekali',
-    'release.title': 'Pembaruan sudah tersambung.',
-    'release.step1': 'Pasang XPI tertandatangani dari halaman ini.',
+    'release.title': 'Update jalan sendiri.',
+    'release.step1': 'Pasang XPI dari halaman ini. Cukup sekali doang.',
     'release.step2':
-      'Firefox menyimpan add-on dengan URL pembaruan <code class="rounded bg-ink/5 px-1 py-0.5 font-mono text-xs">updates.json</code>.',
-    'release.step3':
-      'Setiap tag baru di GitHub menandatangani XPI segar dan memperbarui feed otomatis.',
+      'Firefox simpan add-on dengan URL update <code class="rounded bg-ink/5 px-1 py-0.5 font-mono text-xs">updates.json</code>.',
+    'release.step3': 'Setiap rilis baru, Firefox ambil sendiri dalam hitungan jam.',
     'release.current': 'Build saat ini',
 
-    'footer.copy': '© 2026 Muhammad Wahyu Pripanggalih. Lisensi MIT.',
+    'footer.copy': '© 2026 Muhammad Wahyu Pripanggalih · Lisensi MIT',
     'footer.repo': 'Repository',
     'footer.security': 'Keamanan',
     'footer.release': 'Catatan rilis',
   },
 
   en: {
-    'meta.title': 'Contabox — Firefox containers for people who run more than one identity',
+    'meta.title': 'Contabox — many accounts, one Firefox',
     'meta.description':
-      'Contabox is a Firefox container manager for bulk identities, per-container proxy and fingerprinting, encrypted vault, snapshots, and auto-rules.',
+      'Run dozens of accounts in Firefox without the chaos. Each container gets its own proxy, fingerprint, and vault. Lives on your machine, free, open source.',
+    'meta.ogTitle': 'Contabox — many accounts, one Firefox',
+    'meta.ogDescription':
+      'Each container with its own proxy, fingerprint, and vault. Lives on your machine.',
+
     'a11y.skip': 'Skip to install',
     'a11y.brand': 'Contabox home',
 
-    'brand.tagline': 'Firefox containers, industrialized',
+    'brand.tagline': 'Firefox containers, taken seriously',
 
     'nav.features': 'Features',
     'nav.privacy': 'Privacy',
@@ -142,90 +135,79 @@ const DICTIONARY = {
 
     'badge.signed': 'Signed self-hosted build',
 
-    'hero.title': 'Firefox containers for people who run more than one identity.',
+    'hero.title': 'Many accounts, one Firefox.',
     'hero.body':
-      'Bulk-create isolated profiles, bind each one to a proxy and fingerprint, keep secrets in an encrypted vault, snapshot sessions, then reopen the exact workspace later. No account, no server, no telemetry by default.',
+      'Spin up containers in bulk, give each its own proxy and fingerprint, store passwords in an encrypted vault, then pick up exactly where you left off. Everything stays on your machine — no account, no server, no subscription.',
     'hero.installCta': 'Install in Firefox',
-    'hero.notesCta': 'View release notes',
+    'hero.notesCta': 'Release notes',
     'hero.warning':
-      'Firefox shows a generic warning for signed-but-unlisted add-ons on first install. Click <strong class="text-ink">Continue to install</strong> → <strong class="text-ink">Add</strong>. Updates are automatic after that.',
+      'On first install Firefox shows the standard warning for add-ons outside the AMO listing. Click <strong class="text-ink">Continue to install</strong> → <strong class="text-ink">Add</strong>. Updates roll in by themselves after that.',
 
-    'preview.workspaces': 'Workspaces',
-    'preview.affiliate': 'Affiliate',
-    'preview.research': 'Research',
-    'preview.crypto': 'Crypto',
-    'preview.selectedContainer': 'Selected container',
-    'preview.unlocked': 'Unlocked',
-    'preview.proxy': 'Proxy',
-    'preview.fingerprint': 'Fingerprint',
-    'preview.vault': 'Vault',
-    'preview.vaultValue': '3 entries · TOTP',
-    'preview.snapshot': 'Snapshot',
-    'preview.snapshotValue': 'Auto · 30 days',
-    'preview.bulkAction': 'Bulk action',
-    'preview.bulkOpen': 'Open URL in 38',
-    'preview.bulkProxy': 'Assign proxy',
-    'preview.bulkSnapshot': 'Snapshot all',
+    'preview.contentArea': 'Tabs open in the selected container',
+    'preview.figcaption': 'Real Contabox sidebar running in Firefox.',
 
-    'strip.signed.label': 'Signed',
-    'strip.signed.value': 'Mozilla AMO unlisted',
+    'strip.local.label': 'Local',
+    'strip.local.value': 'Your data stays put',
     'strip.updates.label': 'Updates',
-    'strip.updates.value': 'GitHub Pages update channel',
+    'strip.updates.value': 'Pulled by Firefox',
     'strip.license.label': 'License',
-    'strip.license.value': 'MIT · local-first',
+    'strip.license.value': 'MIT, free for good',
 
-    'features.kicker': 'What it replaces',
-    'features.title': 'A container tool for people who stopped counting at five accounts.',
+    'features.kicker': 'What you actually need day to day',
+    'features.title': 'Firefox gives you isolation. Contabox gives you the controls.',
     'features.body':
-      'Firefox gives you isolation. Contabox gives you operations: create, open, proxy, fingerprint, snapshot, and lock containers as a group.',
+      'Create, open, lock, or assign proxies to dozens of containers at once. Not one by one through right-click menus.',
 
-    'feature.bulk.title': 'Bulk container ops',
+    'feature.bulk.title': 'Bulk operations',
     'feature.bulk.body':
-      'Generate <code class="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-sm">affiliate-{n:03}</code>, open one URL across every account, tag, hibernate, or delete selections without tab-by-tab work.',
-    'feature.proxy.title': 'Proxy + fingerprint',
+      'Generate <code class="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-sm">affiliate-{n:03}</code> a hundred at a time, open the same URL across every account, tag, hibernate, or delete selections — no tab-by-tab busywork.',
+    'feature.proxy.title': 'Per-container proxy & fingerprint',
     'feature.proxy.body':
-      'Bind containers to SOCKS/HTTP proxies, rotate pools, health-check endpoints, and apply per-container UA/canvas/WebGL/audio/timezone profiles.',
-    'feature.vault.title': 'Vault + autofill',
+      'Every container can carry its own proxy and fingerprint. Pool rotation, scheduled health checks, plus UA / canvas / WebGL / audio / timezone overrides — all scoped per container.',
+    'feature.vault.title': 'Vault & autofill',
     'feature.vault.body':
-      'AES-GCM vault, TOTP generator, and a closed-shadow-DOM autofill picker scoped to origin × container. The page never sees long-term secrets.',
-    'feature.snapshot.title': 'Snapshots + locks',
+      'Passwords and TOTP, encrypted with AES-GCM. Autofill only shows up in the matching container. The page never sees long-term secrets — only a one-shot code at fill time.',
+    'feature.snapshot.title': 'Snapshots & locks',
     'feature.snapshot.body':
-      'Capture cookies, storage, and optional IndexedDB. Auto-snapshot on idle or pre-delete. Hide locked tabs until PIN or master-password unlock.',
+      'Capture cookies, storage, and IndexedDB on demand. Auto-snapshot when a container goes idle. Lock sensitive containers behind a PIN — their tabs disappear from the sidebar until you unlock them.',
 
-    'surface.kicker': 'Feature surface',
-    'surface.title': 'Built for workflows, not novelty demos.',
+    'surface.kicker': 'And the rest',
+    'surface.title': 'Built for real work, not demo reels.',
     'surface.item1': 'Command palette · fuzzy search · tags',
     'surface.item2': 'Workspaces · templates · bulk create',
     'surface.item3': 'Proxy pools · cooldown · auto-disable',
     'surface.item4': 'Fingerprint presets · header rewrite',
-    'surface.item5': 'Encrypted vault · password / TOTP / note entries',
-    'surface.item6': 'Cookie editor · Netscape + JSON import/export',
-    'surface.item7': 'Auto-rules · substring / glob / regex routing',
-    'surface.item8': 'Full encrypted backup · schema-safe updates',
+    'surface.item5': 'Encrypted vault: passwords, TOTP, notes',
+    'surface.item6': 'Cookie editor: import / export Netscape, JSON',
+    'surface.item7': 'Auto-rules: substring, glob, regex',
+    'surface.item8': 'Encrypted backup · updates without wiping data',
 
-    'privacy.kicker': 'Privacy posture',
-    'privacy.title': 'Local by default, explicit when not.',
+    'privacy.kicker': 'On privacy',
+    'privacy.title': 'Stays on your machine. Period.',
     'privacy.body':
-      "No account, no hosted backend, no default telemetry. Your browsing state and vault live in Firefox's local IndexedDB under the permanent add-on ID.",
-    'privacy.bg.title': 'Vault key stays in background',
-    'privacy.bg.body': 'Content scripts receive one short-lived fill secret, never the master key.',
+      "No account, no backend server, no telemetry by default. Containers, vault, snapshots — all stored in Firefox's IndexedDB. Uninstall the extension and it all goes with it.",
+    'privacy.bg.title': "The master password doesn't travel",
+    'privacy.bg.body':
+      'Your master password never reaches a content script or any web page. The only thing that gets shipped out is a one-shot fill code.',
     'privacy.network.title': 'No silent network calls',
-    'privacy.network.body': 'Only proxy checks and opt-in telemetry leave the machine.',
-    'privacy.migration.title': 'Forward-only migrations',
+    'privacy.network.body':
+      'Only proxy health checks and (opt-in) telemetry touch the network. Everything else is offline.',
+    'privacy.migration.title': "Updates don't wipe your data",
     'privacy.migration.body':
-      'Patch and minor updates preserve every stored row. Breaking changes require a major version and forced backup.',
-    'privacy.mit.title': 'MIT licensed',
-    'privacy.mit.body': 'Open-source code, documented threat model, reproducible release workflow.',
+      'Patch and minor updates extend the schema; they never strip it. Breaking changes require a forced backup first.',
+    'privacy.mit.title': 'MIT open source',
+    'privacy.mit.body':
+      'Source is open, the threat model is documented, and anyone can reproduce the build.',
 
     'release.kicker': 'Install once',
-    'release.title': 'Updates are already wired.',
-    'release.step1': 'Install the signed XPI from this page.',
+    'release.title': 'Updates handle themselves.',
+    'release.step1': 'Install the XPI from this page. Just once.',
     'release.step2':
-      'Firefox stores the add-on with update URL <code class="rounded bg-ink/5 px-1 py-0.5 font-mono text-xs">updates.json</code>.',
-    'release.step3': 'Every new GitHub tag signs a fresh XPI and updates the feed automatically.',
+      'Firefox stores the add-on with the update URL <code class="rounded bg-ink/5 px-1 py-0.5 font-mono text-xs">updates.json</code>.',
+    'release.step3': 'Each new release, Firefox pulls it down within hours.',
     'release.current': 'Current build',
 
-    'footer.copy': '© 2026 Muhammad Wahyu Pripanggalih. MIT licensed.',
+    'footer.copy': '© 2026 Muhammad Wahyu Pripanggalih · MIT licensed',
     'footer.repo': 'Repository',
     'footer.security': 'Security',
     'footer.release': 'Release notes',

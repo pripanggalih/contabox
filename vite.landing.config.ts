@@ -8,6 +8,10 @@ export default defineConfig({
   // works whether GitHub Pages is on the user/org root or under a project
   // subpath. Avoids /assets/index-*.css 404s on project pages.
   base: './',
+  // Copy `web/static/` verbatim into the output root so we can reference
+  // og.png and screenshots/* with stable paths from <meta> and inline HTML
+  // without going through Vite's hashed-asset pipeline.
+  publicDir: resolve(__dirname, 'web/static'),
   plugins: [tailwindcss()],
   build: {
     outDir: resolve(__dirname, 'public-pages'),

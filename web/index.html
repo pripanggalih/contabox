@@ -6,12 +6,34 @@
     <meta
       name="description"
       data-i18n-meta="meta.description"
-      content="Contabox adalah pengelola container Firefox untuk multi-identitas: bulk operasi, proxy dan fingerprint per-container, vault terenkripsi, snapshot, serta auto-rules."
+      content="Pakai puluhan akun di Firefox tanpa repot. Container dengan proxy, fingerprint, dan vault sendiri-sendiri. Lokal di mesin kamu, gratis, dan open source."
     />
     <meta name="theme-color" content="#fffaf0" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.svg" />
-    <title data-i18n="meta.title">Contabox — Container Firefox untuk yang menjalankan banyak identitas</title>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://pripanggalih.github.io/contabox/" />
+    <meta property="og:image" content="./og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:title" data-i18n-meta="meta.ogTitle" content="Contabox — banyak akun, satu Firefox" />
+    <meta
+      property="og:description"
+      data-i18n-meta="meta.ogDescription"
+      content="Container dengan proxy, fingerprint, dan vault sendiri-sendiri. Lokal di mesin kamu."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" data-i18n-meta="meta.ogTitle" content="Contabox — banyak akun, satu Firefox" />
+    <meta
+      name="twitter:description"
+      data-i18n-meta="meta.ogDescription"
+      content="Container dengan proxy, fingerprint, dan vault sendiri-sendiri. Lokal di mesin kamu."
+    />
+    <meta name="twitter:image" content="./og.png" />
+
+    <title data-i18n="meta.title">Contabox — banyak akun, satu Firefox</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body class="min-h-screen overflow-x-hidden font-sans">
@@ -20,7 +42,7 @@
       data-i18n="a11y.skip"
       class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
     >
-      Lewati ke bagian instalasi
+      Lompat ke bagian pasang
     </a>
 
     <div class="paper-grid pointer-events-none fixed inset-0 opacity-70"></div>
@@ -37,7 +59,7 @@
         </span>
         <span>
           <span class="block text-sm font-black uppercase tracking-[0.28em] text-blueprint">Contabox</span>
-          <span class="block text-xs text-ink/55" data-i18n="brand.tagline">Container Firefox, level operator</span>
+          <span class="block text-xs text-ink/55" data-i18n="brand.tagline">Container Firefox, dipakai serius</span>
         </span>
       </a>
 
@@ -57,19 +79,19 @@
     </header>
 
     <main id="top" class="relative z-10">
-      <section class="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-16 pt-8 sm:px-8 md:pb-24 lg:grid-cols-[1.02fr_0.98fr] lg:px-10 lg:pt-14">
+      <section class="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-16 pt-8 sm:px-8 md:pb-24 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:pt-14">
         <div>
           <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-blueprint/20 bg-panel/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blueprint shadow-sm backdrop-blur">
             <span class="size-2 rounded-full bg-moss"></span>
-            <span><span data-i18n="badge.signed">Build mandiri tertandatangani</span> · v__VERSION__</span>
+            <span><span data-i18n="badge.signed">Build resmi tertandatangani</span> · v__VERSION__</span>
           </div>
 
-          <h1 data-i18n="hero.title" class="text-balance max-w-4xl text-5xl font-black leading-[0.94] tracking-[-0.05em] text-ink sm:text-7xl lg:text-8xl">
-            Container Firefox untuk yang menjalankan banyak identitas sekaligus.
+          <h1 data-i18n="hero.title" class="text-balance max-w-4xl text-5xl font-black leading-[0.94] tracking-[-0.05em] text-ink sm:text-7xl lg:text-[5.5rem]">
+            Banyak akun, satu Firefox.
           </h1>
 
           <p data-i18n="hero.body" class="mt-7 max-w-2xl text-lg leading-8 text-ink/72 sm:text-xl">
-            Buat banyak profil terisolasi sekali jalan, ikat masing-masing ke proxy dan fingerprint, simpan kredensial di vault terenkripsi, snapshot sesi, lalu buka kembali workspace persis seperti sebelumnya. Tanpa akun, tanpa server, dan tanpa telemetri secara default.
+            Bikin container baru sekaligus banyak, kasih masing-masing proxy dan fingerprint sendiri, simpan password di vault terenkripsi, lalu lanjutkan kerjaan kapan saja. Semuanya tinggal di mesin kamu — tanpa akun, server, atau langganan.
           </p>
 
           <div id="install" class="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -85,110 +107,72 @@
               data-i18n="hero.notesCta"
               class="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-panel/80 px-6 py-3 text-sm font-bold text-ink/75 transition hover:border-blueprint/25 hover:text-blueprint focus:outline-none focus:ring-4 focus:ring-blueprint-2/20"
             >
-              Lihat catatan rilis
+              Catatan rilis
             </a>
           </div>
 
-          <p data-i18n="hero.warning" class="mt-4 max-w-2xl text-sm leading-6 text-ink/55">
-            Pada pemasangan pertama Firefox akan menampilkan peringatan generik untuk add-on signed-tetapi-unlisted. Klik <strong class="text-ink">Continue to install</strong> → <strong class="text-ink">Add</strong>. Setelah itu pembaruan berjalan otomatis.
+          <p data-i18n-html="hero.warning" class="mt-4 max-w-2xl text-sm leading-6 text-ink/55">
+            Pertama kali pasang, Firefox bakal nampilin peringatan biasa untuk add-on di luar daftar AMO. Klik <strong class="text-ink">Continue to install</strong> → <strong class="text-ink">Add</strong>. Setelah itu update jalan sendiri.
           </p>
         </div>
 
         <div class="relative mx-auto w-full max-w-xl lg:max-w-none">
-          <div class="absolute -left-10 top-10 hidden size-28 rounded-full bg-rust/15 blur-2xl lg:block"></div>
-          <div class="absolute -right-8 -top-8 hidden size-36 rounded-full bg-blueprint-2/20 blur-3xl lg:block"></div>
-          <div class="drift card-shadow relative rounded-[2rem] border border-blueprint/15 bg-panel/85 p-3 backdrop-blur">
-            <div class="blueprint-shadow overflow-hidden rounded-[1.5rem] border border-blueprint/15 bg-[#13233f] text-white">
-              <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div class="absolute -left-12 top-12 hidden size-32 rounded-full bg-rust/15 blur-3xl lg:block"></div>
+          <div class="absolute -right-10 -top-10 hidden size-40 rounded-full bg-blueprint-2/20 blur-3xl lg:block"></div>
+
+          <figure class="drift card-shadow relative rounded-[2rem] border border-blueprint/15 bg-panel/85 p-3 backdrop-blur">
+            <div class="overflow-hidden rounded-[1.5rem] border border-blueprint/15 bg-[#1a1a2e]">
+              <div class="flex items-center justify-between border-b border-white/10 bg-[#13233f] px-4 py-3">
                 <div class="flex items-center gap-2">
-                  <span class="size-3 rounded-full bg-rust"></span>
+                  <span class="size-3 rounded-full bg-rust/90"></span>
                   <span class="size-3 rounded-full bg-[#e8c15c]"></span>
-                  <span class="size-3 rounded-full bg-moss"></span>
+                  <span class="size-3 rounded-full bg-moss/90"></span>
                 </div>
-                <span class="font-mono text-xs text-white/45">contabox · sidebar</span>
+                <span class="hidden font-mono text-[10px] tracking-wide text-white/40 sm:block">about:addons · contabox</span>
+                <span class="size-3 sm:invisible"></span>
               </div>
 
-              <div class="grid min-h-[470px] grid-cols-[0.84fr_1.16fr]">
-                <aside class="border-r border-white/10 bg-white/[0.03] p-4">
-                  <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45" data-i18n="preview.workspaces">Workspaces</p>
-                  <div class="mt-4 space-y-2">
-                    <div class="rounded-xl bg-white/10 p-3">
-                      <div class="flex items-center justify-between text-sm font-semibold">
-                        <span data-i18n="preview.affiliate">Affiliate</span><span class="text-white/45">38</span>
-                      </div>
-                      <div class="mt-3 space-y-2 text-xs text-white/68">
-                        <div class="flex items-center justify-between rounded-lg bg-blueprint-2/25 px-2 py-2 text-white">
-                          <span>AFF-ID-001</span><span class="rounded bg-white/10 px-1.5 py-0.5">SG</span>
-                        </div>
-                        <div class="flex items-center justify-between rounded-lg px-2 py-2">
-                          <span>AFF-ID-002</span><span class="rounded bg-white/10 px-1.5 py-0.5">JP</span>
-                        </div>
-                        <div class="flex items-center justify-between rounded-lg px-2 py-2">
-                          <span>AFF-ID-003</span><span class="rounded bg-white/10 px-1.5 py-0.5">US</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="rounded-xl border border-white/10 p-3 text-sm text-white/70"><span data-i18n="preview.research">Research</span> · 12</div>
-                    <div class="rounded-xl border border-white/10 p-3 text-sm text-white/70"><span data-i18n="preview.crypto">Crypto</span> · 7</div>
+              <div class="flex">
+                <div class="shrink-0 bg-[#0f1626] p-3">
+                  <img
+                    src="./screenshots/contabox.png"
+                    alt="Sidebar Contabox di Firefox menampilkan workspace dan daftar container"
+                    width="329"
+                    height="540"
+                    loading="lazy"
+                    decoding="async"
+                    class="block w-[260px] rounded-md sm:w-[300px]"
+                  />
+                </div>
+                <div class="hidden flex-1 flex-col gap-3 bg-gradient-to-br from-[#1a1a2e] to-[#0f1626] p-5 text-white/85 lg:flex">
+                  <div class="flex items-center gap-2 rounded-lg bg-white/[0.06] px-3 py-2 font-mono text-[11px] text-white/55">
+                    <span class="size-2 rounded-full bg-moss/80"></span>
+                    https://github.com
                   </div>
-                </aside>
-
-                <section class="p-5">
-                  <div class="flex items-start justify-between gap-3">
-                    <div>
-                      <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45" data-i18n="preview.selectedContainer">Container terpilih</p>
-                      <h2 class="mt-1 text-2xl font-black tracking-tight">AFF-ID-001</h2>
-                    </div>
-                    <span data-i18n="preview.unlocked" class="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-1 text-xs font-bold text-emerald-100">Terbuka</span>
+                  <div class="flex flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 text-xs text-white/35">
+                    <span data-i18n="preview.contentArea">Tab terbuka di container terpilih</span>
                   </div>
-
-                  <div class="mt-6 grid grid-cols-2 gap-3 text-sm">
-                    <div class="rounded-2xl bg-white/8 p-4">
-                      <p class="text-white/45" data-i18n="preview.proxy">Proxy</p>
-                      <p class="mt-1 font-semibold">socks5 · SG pool</p>
-                    </div>
-                    <div class="rounded-2xl bg-white/8 p-4">
-                      <p class="text-white/45" data-i18n="preview.fingerprint">Fingerprint</p>
-                      <p class="mt-1 font-semibold">Chrome · macOS</p>
-                    </div>
-                    <div class="rounded-2xl bg-white/8 p-4">
-                      <p class="text-white/45" data-i18n="preview.vault">Vault</p>
-                      <p class="mt-1 font-semibold" data-i18n="preview.vaultValue">3 entri · TOTP</p>
-                    </div>
-                    <div class="rounded-2xl bg-white/8 p-4">
-                      <p class="text-white/45" data-i18n="preview.snapshot">Snapshot</p>
-                      <p class="mt-1 font-semibold" data-i18n="preview.snapshotValue">Otomatis · 30 hari</p>
-                    </div>
-                  </div>
-
-                  <div class="mt-6 rounded-2xl border border-white/10 bg-black/18 p-4">
-                    <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45" data-i18n="preview.bulkAction">Aksi massal</p>
-                    <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
-                      <span class="rounded-full bg-white px-3 py-1.5 text-blueprint" data-i18n="preview.bulkOpen">Buka URL di 38 container</span>
-                      <span class="rounded-full bg-white/10 px-3 py-1.5 text-white/70" data-i18n="preview.bulkProxy">Pasang proxy</span>
-                      <span class="rounded-full bg-white/10 px-3 py-1.5 text-white/70" data-i18n="preview.bulkSnapshot">Snapshot semua</span>
-                    </div>
-                  </div>
-                </section>
+                </div>
               </div>
             </div>
-          </div>
+            <figcaption class="sr-only" data-i18n="preview.figcaption">Tampilan asli Contabox dipasang di Firefox.</figcaption>
+          </figure>
         </div>
       </section>
 
       <section class="border-y border-line/80 bg-panel/70 py-8 backdrop-blur">
         <div class="mx-auto grid max-w-7xl gap-6 px-5 sm:px-8 md:grid-cols-3 lg:px-10">
           <div>
-            <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45" data-i18n="strip.signed.label">Tertandatangani</p>
-            <p class="mt-1 text-lg font-black" data-i18n="strip.signed.value">Mozilla AMO · channel unlisted</p>
+            <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45" data-i18n="strip.local.label">Lokal</p>
+            <p class="mt-1 text-lg font-black" data-i18n="strip.local.value">Datamu tidak ke mana-mana</p>
           </div>
           <div>
-            <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45" data-i18n="strip.updates.label">Pembaruan</p>
-            <p class="mt-1 text-lg font-black" data-i18n="strip.updates.value">Channel via GitHub Pages</p>
+            <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45" data-i18n="strip.updates.label">Update</p>
+            <p class="mt-1 text-lg font-black" data-i18n="strip.updates.value">Otomatis lewat Firefox</p>
           </div>
           <div>
             <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45" data-i18n="strip.license.label">Lisensi</p>
-            <p class="mt-1 text-lg font-black" data-i18n="strip.license.value">MIT · local-first</p>
+            <p class="mt-1 text-lg font-black" data-i18n="strip.license.value">MIT, gratis selamanya</p>
           </div>
         </div>
       </section>
@@ -196,42 +180,42 @@
       <section id="features" class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
         <div class="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
-            <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-rust" data-i18n="features.kicker">Apa yang digantikan</p>
+            <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-rust" data-i18n="features.kicker">Yang sehari-hari kamu butuhkan</p>
             <h2 class="text-balance mt-3 text-4xl font-black tracking-[-0.04em] sm:text-5xl" data-i18n="features.title">
-              Alat container untuk yang sudah berhenti menghitung di akun ke lima.
+              Firefox kasih isolasi. Contabox kasih kontrolnya.
             </h2>
             <p class="mt-5 text-lg leading-8 text-ink/65" data-i18n="features.body">
-              Firefox memberi isolasi. Contabox menambahkan operasi: buat, buka, proxy, fingerprint, snapshot, dan kunci container sebagai grup.
+              Buat, buka, kunci, atau kasih proxy ke puluhan container sekaligus. Bukan satu-satu lewat menu kanan klik.
             </p>
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2">
             <article class="card-shadow rounded-3xl border border-line bg-panel/90 p-6">
               <div class="mb-5 inline-flex rounded-2xl bg-blueprint/10 p-3 text-blueprint">01</div>
-              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.bulk.title">Bulk container ops</h3>
+              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.bulk.title">Operasi massal</h3>
               <p class="mt-3 leading-7 text-ink/65" data-i18n-html="feature.bulk.body">
-                Buat <code class="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-sm">affiliate-{n:03}</code> sekaligus, buka satu URL di seluruh akun, beri tag, hibernasi, atau hapus pilihan tanpa kerja tab demi tab.
+                Bikin <code class="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-sm">affiliate-{n:03}</code> sekaligus 100 biji, buka satu URL di semua container, beri tag, hibernasi, atau hapus pilihan — tanpa kerja tab demi tab.
               </p>
             </article>
             <article class="card-shadow rounded-3xl border border-line bg-panel/90 p-6">
               <div class="mb-5 inline-flex rounded-2xl bg-rust/10 p-3 text-rust">02</div>
-              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.proxy.title">Proxy + fingerprint</h3>
+              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.proxy.title">Proxy &amp; fingerprint per container</h3>
               <p class="mt-3 leading-7 text-ink/65" data-i18n="feature.proxy.body">
-                Ikat container ke proxy SOCKS atau HTTP, rotasi pool, periksa kesehatan endpoint, dan terapkan profil UA, canvas, WebGL, audio, serta timezone yang berbeda per container.
+                Tiap container punya proxy dan fingerprint sendiri. Ada rotasi pool, health check terjadwal, plus override UA, canvas, WebGL, audio, dan timezone — semuanya per container.
               </p>
             </article>
             <article class="card-shadow rounded-3xl border border-line bg-panel/90 p-6">
               <div class="mb-5 inline-flex rounded-2xl bg-moss/10 p-3 text-moss">03</div>
-              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.vault.title">Vault + autofill</h3>
+              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.vault.title">Vault &amp; autofill</h3>
               <p class="mt-3 leading-7 text-ink/65" data-i18n="feature.vault.body">
-                Vault AES-GCM, generator TOTP, dan autofill di shadow DOM tertutup yang scoped per origin × container. Halaman tidak pernah melihat secret jangka panjang.
+                Password dan TOTP terenkripsi AES-GCM. Autofill cuma muncul di container yang sesuai. Halaman web tidak pernah lihat secret jangka panjang — yang sampai ke sana cuma satu kode sekali pakai.
               </p>
             </article>
             <article class="card-shadow rounded-3xl border border-line bg-panel/90 p-6">
               <div class="mb-5 inline-flex rounded-2xl bg-blueprint-2/10 p-3 text-blueprint">04</div>
-              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.snapshot.title">Snapshot + lock</h3>
+              <h3 class="text-xl font-black tracking-tight" data-i18n="feature.snapshot.title">Snapshot &amp; kunci</h3>
               <p class="mt-3 leading-7 text-ink/65" data-i18n="feature.snapshot.body">
-                Tangkap cookies, storage, dan IndexedDB opsional. Auto-snapshot saat container idle atau sebelum dihapus. Sembunyikan tab yang dikunci hingga PIN atau master password dimasukkan.
+                Tangkap cookies, storage, dan IndexedDB kalau perlu. Auto-snapshot pas container nganggur. Kunci container sensitif pakai PIN — tabnya hilang dari sidebar sampai dibuka lagi.
               </p>
             </article>
           </div>
@@ -242,18 +226,18 @@
         <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
           <div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
             <div>
-              <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-blue-200/70" data-i18n="surface.kicker">Permukaan fitur</p>
-              <h2 class="text-balance mt-3 text-4xl font-black tracking-[-0.04em] sm:text-5xl" data-i18n="surface.title">Dirancang untuk alur kerja, bukan demo coba-coba.</h2>
+              <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-blue-200/70" data-i18n="surface.kicker">Plus yang lain</p>
+              <h2 class="text-balance mt-3 text-4xl font-black tracking-[-0.04em] sm:text-5xl" data-i18n="surface.title">Dipakai untuk kerja, bukan untuk pajangan demo.</h2>
             </div>
             <div class="grid gap-3 text-sm sm:grid-cols-2">
               <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item1">Command palette · pencarian fuzzy · tag</div>
-              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item2">Workspaces · template · bulk create</div>
-              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item3">Proxy pool · cooldown · auto-disable</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item2">Workspace · template · bulk create</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item3">Pool proxy · cooldown · auto-disable</div>
               <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item4">Preset fingerprint · header rewrite</div>
-              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item5">Vault terenkripsi · entri password / TOTP / catatan</div>
-              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item6">Editor cookie · impor / ekspor Netscape dan JSON</div>
-              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item7">Auto-rules · routing substring / glob / regex</div>
-              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item8">Backup terenkripsi · update aman terhadap skema</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item5">Vault terenkripsi: password, TOTP, catatan</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item6">Editor cookie: impor & ekspor Netscape, JSON</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item7">Auto-rules: substring, glob, regex</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4" data-i18n="surface.item8">Backup terenkripsi · update tanpa wipe data</div>
             </div>
           </div>
         </div>
@@ -263,28 +247,28 @@
         <div class="card-shadow rounded-[2rem] border border-line bg-panel/90 p-6 sm:p-10 lg:p-12">
           <div class="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
             <div>
-              <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-moss" data-i18n="privacy.kicker">Sikap privasi</p>
-              <h2 class="text-balance mt-3 text-4xl font-black tracking-[-0.04em]" data-i18n="privacy.title">Lokal sebagai default, eksplisit ketika tidak.</h2>
+              <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-moss" data-i18n="privacy.kicker">Soal privasi</p>
+              <h2 class="text-balance mt-3 text-4xl font-black tracking-[-0.04em]" data-i18n="privacy.title">Tinggal di mesin kamu. Titik.</h2>
               <p class="mt-5 leading-8 text-ink/65" data-i18n="privacy.body">
-                Tidak ada akun, tidak ada backend, tidak ada telemetri default. Status browsing dan vault tinggal di IndexedDB Firefox di mesinmu, di bawah ID add-on yang permanen.
+                Tidak ada akun, tidak ada server backend, tidak ada telemetri default. Semua datanya — container, vault, snapshot — disimpan di IndexedDB Firefox. Uninstall extension-nya, semuanya ikut kebuang.
               </p>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
               <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
-                <p class="font-black" data-i18n="privacy.bg.title">Kunci vault tinggal di background</p>
-                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.bg.body">Content script hanya menerima satu rahasia jangka pendek per fill, tidak pernah master key.</p>
+                <p class="font-black" data-i18n="privacy.bg.title">Master password tidak ke mana-mana</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.bg.body">Master password kamu tidak pernah masuk ke content script atau halaman web. Yang dikirim cuma kode sekali pakai untuk autofill.</p>
               </div>
               <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
-                <p class="font-black" data-i18n="privacy.network.title">Tanpa panggilan jaringan diam-diam</p>
-                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.network.body">Hanya health-check proxy dan telemetri opt-in yang meninggalkan mesinmu.</p>
+                <p class="font-black" data-i18n="privacy.network.title">Tanpa koneksi diam-diam</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.network.body">Cuma health check proxy dan telemetri (kalau diaktifkan) yang menyentuh internet. Sisanya offline.</p>
               </div>
               <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
-                <p class="font-black" data-i18n="privacy.migration.title">Migrasi forward-only</p>
-                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.migration.body">Update patch dan minor mempertahankan setiap baris yang sudah tersimpan. Perubahan breaking butuh major dan backup paksa.</p>
+                <p class="font-black" data-i18n="privacy.migration.title">Update tidak menghapus data</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.migration.body">Patch dan minor update menambah skema, tidak pernah memotongnya. Perubahan besar wajib backup paksa dulu.</p>
               </div>
               <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
-                <p class="font-black" data-i18n="privacy.mit.title">Lisensi MIT</p>
-                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.mit.body">Kode terbuka, threat model terdokumentasi, alur rilis yang dapat direproduksi.</p>
+                <p class="font-black" data-i18n="privacy.mit.title">Open source MIT</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60" data-i18n="privacy.mit.body">Kode terbuka, threat model didokumentasikan, build bisa direproduksi siapa pun.</p>
               </div>
             </div>
           </div>
@@ -295,11 +279,11 @@
         <div class="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
           <div class="card-shadow rounded-[2rem] border border-line bg-panel/90 p-8 sm:p-10">
             <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-rust" data-i18n="release.kicker">Pasang sekali</p>
-            <h2 class="mt-3 text-4xl font-black tracking-[-0.04em]" data-i18n="release.title">Pembaruan sudah tersambung.</h2>
+            <h2 class="mt-3 text-4xl font-black tracking-[-0.04em]" data-i18n="release.title">Update jalan sendiri.</h2>
             <ol class="mt-7 space-y-4 text-ink/70">
-              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">1</span><span data-i18n="release.step1">Pasang XPI tertandatangani dari halaman ini.</span></li>
-              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">2</span><span data-i18n-html="release.step2">Firefox menyimpan add-on dengan URL pembaruan <code class="rounded bg-ink/5 px-1 py-0.5 font-mono text-xs">updates.json</code>.</span></li>
-              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">3</span><span data-i18n="release.step3">Setiap tag baru di GitHub menandatangani XPI segar dan memperbarui feed otomatis.</span></li>
+              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">1</span><span data-i18n="release.step1">Pasang XPI dari halaman ini. Cukup sekali doang.</span></li>
+              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">2</span><span data-i18n-html="release.step2">Firefox simpan add-on dengan URL update <code class="rounded bg-ink/5 px-1 py-0.5 font-mono text-xs">updates.json</code>.</span></li>
+              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">3</span><span data-i18n="release.step3">Setiap rilis baru, Firefox ambil sendiri dalam hitungan jam.</span></li>
             </ol>
           </div>
           <aside class="blueprint-shadow rounded-[2rem] border border-blueprint/15 bg-[#13233f] p-8 text-white sm:p-10">
@@ -317,7 +301,7 @@
 
     <footer class="relative z-10 border-t border-line bg-panel/70 px-5 py-8 text-sm text-ink/55 sm:px-8 lg:px-10">
       <div class="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p data-i18n="footer.copy">© 2026 Muhammad Wahyu Pripanggalih. Lisensi MIT.</p>
+        <p data-i18n="footer.copy">© 2026 Muhammad Wahyu Pripanggalih · Lisensi MIT</p>
         <div class="flex flex-wrap gap-4">
           <a class="hover:text-blueprint" href="https://github.com/pripanggalih/contabox" data-i18n="footer.repo">Repository</a>
           <a class="hover:text-blueprint" href="https://github.com/pripanggalih/contabox/blob/main/docs/SECURITY.md" data-i18n="footer.security">Keamanan</a>
