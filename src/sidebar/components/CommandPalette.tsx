@@ -2,7 +2,7 @@ import { invoke } from '@shared/messaging';
 import { Command } from 'cmdk';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { displayHex, iconComponent } from '../lib/palette';
+import { displayHex, displayIcon } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
 
 interface Props {
@@ -88,7 +88,7 @@ export function CommandPalette({ onClose }: Props) {
           {containers.length > 0 ? (
             <Command.Group heading="Containers" className="cmdk-group">
               {containers.map((c) => {
-                const Icon = iconComponent(c.icon);
+                const Icon = displayIcon(c);
                 const ws = workspaces.find((w) => w.id === c.ext.workspaceId);
                 return (
                   <Command.Item

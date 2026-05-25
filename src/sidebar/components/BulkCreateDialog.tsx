@@ -12,6 +12,7 @@ import {
   randomHex,
 } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
+import { IconPicker } from './IconPicker';
 import { Modal } from './Modal';
 
 interface Props {
@@ -29,6 +30,8 @@ export function BulkCreateDialog({ onClose }: Props) {
   const [hex, setHex] = useState<string>(NATIVE_HEXES.blue);
   const [randomColor, setRandomColor] = useState(false);
   const [icon, setIcon] = useState<ContainerIcon>('briefcase');
+  const [customIcon, setCustomIcon] = useState<string | undefined>(undefined);
+  const [randomIcon, setRandomIcon] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>('');
   const [templateId, setTemplateId] = useState<string>('');
   const [tagsRaw, setTagsRaw] = useState('');
@@ -65,7 +68,9 @@ export function BulkCreateDialog({ onClose }: Props) {
           color: native,
           icon,
           customColor: randomColor || isNative ? undefined : hex,
+          customIcon: randomIcon ? undefined : customIcon,
           randomColor,
+          randomIcon,
           workspaceId: workspaceId || undefined,
           templateId: templateId || undefined,
           tags: tags.length > 0 ? tags : undefined,
@@ -197,18 +202,39 @@ export function BulkCreateDialog({ onClose }: Props) {
           ) : null}
         </fieldset>
 
-        <Field label="Icon">
-          <div className="grid grid-cols-13 gap-1" style={{ gridTemplateColumns: 'repeat(13, minmax(0, 1fr))' }}>
+        <fieldset>
+          <legend className="mb-1.5 flex w-full items-center justify-between text-xs font-medium text-[var(--color-text-muted)]">
+            <span>Icon</span>
+            <label className="flex items-center gap-1.5 text-[11px] normal-case">
+              <input
+                type="checkbox"
+                checked={randomIcon}
+                onChange={(e) => setRandomIcon(e.target.checked)}
+              />
+              <Shuffle className="h-3 w-3" />
+              Random per container
+            </label>
+          </legend>
+          <div
+            className={`grid grid-cols-13 gap-1 transition-opacity ${
+              randomIcon ? 'opacity-40 pointer-events-none' : ''
+            }`}
+            style={{ gridTemplateColumns: 'repeat(13, minmax(0, 1fr))' }}
+            aria-disabled={randomIcon}
+          >
             {CONTAINER_ICONS.map((i) => {
               const Icon = iconComponent(i);
-              const sel = icon === i;
+              const sel = icon === i && !customIcon;
               return (
                 <button
                   key={i}
                   type="button"
                   aria-label={i}
                   aria-pressed={sel}
-                  onClick={() => setIcon(i)}
+                  onClick={() => {
+                    setIcon(i);
+                    setCustomIcon(undefined);
+                  }}
                   className={`flex h-7 w-7 items-center justify-center rounded border ${
                     sel
                       ? 'border-[var(--color-accent)] bg-[var(--color-bg-hover)]'
@@ -221,7 +247,17 @@ export function BulkCreateDialog({ onClose }: Props) {
               );
             })}
           </div>
-        </Field>
+          {!randomIcon ? (
+            <div className="mt-2">
+              <IconPicker
+                nativeIcon={icon}
+                value={customIcon}
+                color={randomColor ? undefined : hex}
+                onChange={setCustomIcon}
+              />
+            </div>
+          ) : null}
+        </fieldset>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Workspace (optional)">

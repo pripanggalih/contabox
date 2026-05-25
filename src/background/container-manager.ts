@@ -26,6 +26,7 @@ import type {
 } from '@shared/types';
 import { expandPattern, now, sleep } from '@shared/utils';
 import { closestNativeColor, randomHexColor } from '@shared/color';
+import { randomLucideIcon } from '@shared/icons';
 
 const UNDO_WINDOW_MS = 5_000;
 
@@ -91,6 +92,7 @@ export class ContainerManager {
       autoSnapshot: false,
       defaultUrl: input.defaultUrl,
       customColor: input.customColor,
+      customIcon: input.customIcon,
       order,
       createdAt: now(),
       lastUsedAt: now(),
@@ -125,6 +127,8 @@ export class ContainerManager {
       defaultUrl: rest.defaultUrl === null ? undefined : (rest.defaultUrl ?? existing.defaultUrl),
       customColor:
         rest.customColor === null ? undefined : (rest.customColor ?? existing.customColor),
+      customIcon:
+        rest.customIcon === null ? undefined : (rest.customIcon ?? existing.customIcon),
       tags: rest.tags ?? existing.tags,
       notes: rest.notes ?? existing.notes,
       isLocked: rest.isLocked ?? existing.isLocked,
@@ -198,11 +202,13 @@ export class ContainerManager {
       const customColor = input.randomColor
         ? randomHexColor()
         : input.customColor;
+      const customIcon = input.randomIcon ? randomLucideIcon() : input.customIcon;
       const view = await this.create({
         name,
         color: input.color,
         icon: input.icon,
         customColor,
+        customIcon,
         workspaceId: input.workspaceId,
         templateId: input.templateId,
         tags: input.tags,

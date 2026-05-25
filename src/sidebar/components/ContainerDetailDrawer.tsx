@@ -1,7 +1,9 @@
 import { invoke } from '@shared/messaging';
 import type { ContainerView, FingerprintProfile, Proxy, Workspace } from '@shared/types';
 import { useEffect, useState } from 'react';
+import { displayHex } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
+import { IconPicker } from './IconPicker';
 import { Modal } from './Modal';
 
 interface Props {
@@ -24,6 +26,7 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
   const [workspaceId, setWorkspaceId] = useState(view.ext.workspaceId ?? '');
   const [proxyId, setProxyId] = useState(view.ext.proxyId ?? '');
   const [fingerprintId, setFingerprintId] = useState(view.ext.fingerprintId ?? '');
+  const [customIcon, setCustomIcon] = useState<string | undefined>(view.ext.customIcon);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -56,6 +59,7 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
           workspaceId: workspaceId || null,
           proxyId: proxyId || null,
           fingerprintId: fingerprintId || null,
+          customIcon: customIcon ?? null,
         },
       });
       await refresh();
@@ -105,6 +109,19 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
               </option>
             ))}
           </select>
+        </Field>
+
+        <Field label="Icon">
+          <IconPicker
+            nativeIcon={view.icon}
+            value={customIcon}
+            color={displayHex(view)}
+            onChange={setCustomIcon}
+          />
+          <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+            Custom icons appear in the sidebar and popup. Firefox's tab strip
+            keeps the native glyph.
+          </p>
         </Field>
 
         <div className="grid grid-cols-2 gap-3">

@@ -11,6 +11,7 @@ import {
   randomHex,
 } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
+import { IconPicker } from './IconPicker';
 import { Modal } from './Modal';
 
 interface Props {
@@ -25,6 +26,7 @@ export function CreateContainerDialog({ onClose }: Props) {
   const [name, setName] = useState('');
   const [hex, setHex] = useState<string>(NATIVE_HEXES.blue);
   const [icon, setIcon] = useState<ContainerIcon>('fingerprint');
+  const [customIcon, setCustomIcon] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -55,6 +57,7 @@ export function CreateContainerDialog({ onClose }: Props) {
           color: native,
           icon,
           customColor: isNative ? undefined : hex,
+          customIcon,
         },
       });
       await refresh();
@@ -152,7 +155,7 @@ export function CreateContainerDialog({ onClose }: Props) {
           <div className="grid grid-cols-7 gap-1.5" role="radiogroup" aria-label="Icon">
             {CONTAINER_ICONS.map((i) => {
               const Icon = iconComponent(i);
-              const selected = icon === i;
+              const selected = icon === i && !customIcon;
               return (
                 <button
                   key={i}
@@ -160,7 +163,10 @@ export function CreateContainerDialog({ onClose }: Props) {
                   role="radio"
                   aria-checked={selected}
                   aria-label={i}
-                  onClick={() => setIcon(i)}
+                  onClick={() => {
+                    setIcon(i);
+                    setCustomIcon(undefined);
+                  }}
                   className={[
                     'flex h-8 w-8 items-center justify-center rounded-md border transition',
                     selected
@@ -173,6 +179,18 @@ export function CreateContainerDialog({ onClose }: Props) {
                 </button>
               );
             })}
+          </div>
+          <div className="mt-2">
+            <IconPicker
+              nativeIcon={icon}
+              value={customIcon}
+              color={hex}
+              onChange={setCustomIcon}
+            />
+            <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
+              Picking a custom icon only affects sidebar/popup. Firefox's tab strip
+              still uses the native glyph above.
+            </p>
           </div>
         </fieldset>
 

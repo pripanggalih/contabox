@@ -1,6 +1,6 @@
 import { invoke } from '@shared/messaging';
 import { useState } from 'react';
-import { displayHex, iconComponent } from '../lib/palette';
+import { displayHex, displayIcon } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
 import { Modal } from './Modal';
 
@@ -96,7 +96,7 @@ export function BulkOpenUrlDialog({ initialContainerIds, onClose }: Props) {
             </div>
             <ul>
               {containers.map((c) => {
-                const Icon = iconComponent(c.icon);
+                const Icon = displayIcon(c);
                 const checked = selected.has(c.cookieStoreId);
                 return (
                   <li key={c.cookieStoreId}>

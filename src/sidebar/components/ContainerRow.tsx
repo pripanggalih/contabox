@@ -2,10 +2,10 @@
  * Single row in the container tree.
  *
  * Interaction model:
- *   - Click row body          → open container (default URL)
+ *   - Click "Open" button     → open container (default URL), hover-revealed
  *   - Cmd/Ctrl/Shift + click  → toggle select (power-user shortcut)
  *   - Click checkbox          → toggle select (mouse-friendly path)
- *   - Double click            → inline rename
+ *   - Double click row body   → inline rename
  *   - Drag colored icon       → reorder / move between workspaces
  *
  * Selection visibility:
@@ -17,9 +17,9 @@
 import { useDraggable } from '@dnd-kit/core';
 import { invoke } from '@shared/messaging';
 import type { ContainerView } from '@shared/types';
-import { Lock, MoreVertical } from 'lucide-react';
+import { Lock, MoreVertical, SquareArrowOutUpRight } from 'lucide-react';
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { displayHex, iconComponent } from '../lib/palette';
+import { displayHex, displayIcon } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
 import { ContainerDetailDrawer } from './ContainerDetailDrawer';
 import { CookieEditorDialog } from './CookieEditorDialog';
@@ -49,7 +49,7 @@ export function ContainerRow({ view }: Props) {
   // selection without re-hovering each row.
   const selectionMode = selectedIds.size > 0;
 
-  const Icon = iconComponent(view.icon);
+  const Icon = displayIcon(view);
   const inputRef = useRef<HTMLInputElement>(null);
   const [draftName, setDraftName] = useState(view.name);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -110,12 +110,12 @@ export function ContainerRow({ view }: Props) {
     const target = e.target as HTMLElement;
     if (target.closest(INTERACTIVE_SELECTOR)) return;
 
-    // Modifier-click extends or builds a selection without opening.
+    // Modifier-click extends or builds a selection. A plain click on the row
+    // body is a no-op — opening is now an explicit action via the hover button.
     if (e.metaKey || e.ctrlKey || e.shiftKey) {
       toggleSelected(view.cookieStoreId, 'multi');
       return;
     }
-    void openContainer(false);
   }
 
   async function toggleLock() {
@@ -174,7 +174,7 @@ export function ContainerRow({ view }: Props) {
         aria-label={view.name}
         aria-grabbed={isDragging}
         aria-selected={selected}
-        className={`group relative flex cursor-pointer items-center gap-2 px-2 py-1.5 transition-colors ${
+        className={`group relative flex items-center gap-2 px-2 py-1.5 transition-colors ${
           selected
             ? 'bg-[var(--color-accent)]/15 hover:bg-[var(--color-accent)]/20'
             : 'hover:bg-[var(--color-bg-hover)]'
@@ -251,6 +251,20 @@ export function ContainerRow({ view }: Props) {
             aria-label="Locked"
           />
         ) : null}
+
+        <button
+          type="button"
+          data-no-row-open
+          onClick={(e) => {
+            e.stopPropagation();
+            void openContainer(false);
+          }}
+          aria-label={`Open ${view.name}`}
+          title="Open container"
+          className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-text-muted)] opacity-0 transition-opacity hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)] focus:opacity-100 group-hover:opacity-100"
+        >
+          <SquareArrowOutUpRight className="h-3.5 w-3.5" />
+        </button>
 
         <div className="relative">
           <button
