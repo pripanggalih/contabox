@@ -1,0 +1,56 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'scripts/render-landing.mjs'
+      - 'vite.landing.config.ts'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build landing page
+        env:
+          ADDON_ID: contabox@galih.dev
+          REPO_URL: https://github.com/${{ github.repository }}
+          UPDATES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/updates.json
+        run: |
+          pnpm build:landing
+          curl -fsSL "$UPDATES_URL" -o public-pages/updates.json || echo '{}' > public-pages/updates.json
+          node scripts/render-landing.mjs
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public-pages
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en" class="bg-paper text-ink antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Contabox is a Firefox container manager for bulk identities, per-container proxy and fingerprinting, encrypted vault, snapshots, and auto-rules."
+    />
+    <meta name="theme-color" content="#fffaf0" />
+    <title>Contabox — Firefox containers for people who run more than one identity</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="min-h-screen overflow-x-hidden font-sans">
+    <a
+      href="#install"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+    >
+      Skip to install
+    </a>
+
+    <div class="pointer-events-none fixed inset-0 paper-grid opacity-70"></div>
+    <div class="pointer-events-none fixed inset-x-0 top-0 h-28 bg-gradient-to-b from-panel to-transparent"></div>
+
+    <header class="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
+      <a href="#top" class="group inline-flex items-center gap-3" aria-label="Contabox home">
+        <span
+          class="flex size-10 items-center justify-center rounded-2xl border border-blueprint/15 bg-blueprint text-white shadow-sm transition-transform group-hover:-rotate-3"
+        >
+          <span class="grid gap-0.5">
+            <span class="block h-1.5 w-5 rounded-full bg-white/95"></span>
+            <span class="block h-1.5 w-5 rounded-full bg-white/80"></span>
+            <span class="block h-1.5 w-5 rounded-full bg-white/60"></span>
+          </span>
+        </span>
+        <span>
+          <span class="block text-sm font-black uppercase tracking-[0.28em] text-blueprint">Contabox</span>
+          <span class="block text-xs text-ink/55">Firefox containers, industrialized</span>
+        </span>
+      </a>
+
+      <nav aria-label="Main navigation" class="hidden items-center gap-6 text-sm font-medium text-ink/70 md:flex">
+        <a class="hover:text-blueprint" href="#features">Features</a>
+        <a class="hover:text-blueprint" href="#privacy">Privacy</a>
+        <a class="hover:text-blueprint" href="#release">Updates</a>
+        <a class="hover:text-blueprint" href="https://github.com/pripanggalih/contabox">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="top" class="relative z-10">
+      <section class="mx-auto grid max-w-7xl items-center gap-10 px-5 pb-16 pt-8 sm:px-8 md:pb-24 lg:grid-cols-[1.02fr_0.98fr] lg:px-10 lg:pt-14">
+        <div>
+          <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-blueprint/20 bg-panel/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blueprint shadow-sm backdrop-blur">
+            <span class="size-2 rounded-full bg-moss"></span>
+            Signed self-hosted build · v__VERSION__
+          </div>
+
+          <h1 class="max-w-4xl text-balance text-5xl font-black leading-[0.94] tracking-[-0.05em] text-ink sm:text-7xl lg:text-8xl">
+            Firefox containers for people who run more than one identity.
+          </h1>
+
+          <p class="mt-7 max-w-2xl text-lg leading-8 text-ink/72 sm:text-xl">
+            Bulk-create isolated profiles, bind each one to a proxy and fingerprint,
+            keep secrets in an encrypted vault, snapshot sessions, then reopen the
+            exact workspace later. No account, no server, no telemetry by default.
+          </p>
+
+          <div id="install" class="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <a
+              href="__XPI_URL__"
+              class="inline-flex min-h-12 items-center justify-center rounded-full bg-blueprint px-6 py-3 text-sm font-black uppercase tracking-[0.18em] text-white shadow-lg shadow-blueprint/20 transition hover:-translate-y-0.5 hover:bg-blueprint/90 focus:outline-none focus:ring-4 focus:ring-blueprint-2/25"
+            >
+              Install in Firefox
+            </a>
+            <a
+              href="https://github.com/pripanggalih/contabox/releases/tag/v__VERSION__"
+              class="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-panel/80 px-6 py-3 text-sm font-bold text-ink/75 transition hover:border-blueprint/25 hover:text-blueprint focus:outline-none focus:ring-4 focus:ring-blueprint-2/20"
+            >
+              View release notes
+            </a>
+          </div>
+
+          <p class="mt-4 max-w-2xl text-sm leading-6 text-ink/55">
+            Firefox shows a generic warning for signed-but-unlisted add-ons on first
+            install. Click <strong class="text-ink">Continue to install</strong> →
+            <strong class="text-ink">Add</strong>. Updates are automatic after that.
+          </p>
+        </div>
+
+        <div class="relative mx-auto w-full max-w-xl lg:max-w-none">
+          <div class="absolute -left-10 top-10 hidden size-28 rounded-full bg-rust/15 blur-2xl lg:block"></div>
+          <div class="absolute -right-8 -top-8 hidden size-36 rounded-full bg-blueprint-2/20 blur-3xl lg:block"></div>
+          <div class="drift relative rounded-[2rem] border border-blueprint/15 bg-panel/85 p-3 card-shadow backdrop-blur">
+            <div class="overflow-hidden rounded-[1.5rem] border border-blueprint/15 bg-[#13233f] text-white blueprint-shadow">
+              <div class="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                <div class="flex items-center gap-2">
+                  <span class="size-3 rounded-full bg-rust"></span>
+                  <span class="size-3 rounded-full bg-[#e8c15c]"></span>
+                  <span class="size-3 rounded-full bg-moss"></span>
+                </div>
+                <span class="font-mono text-xs text-white/45">sidebar.html</span>
+              </div>
+
+              <div class="grid min-h-[470px] grid-cols-[0.84fr_1.16fr]">
+                <aside class="border-r border-white/10 bg-white/[0.03] p-4">
+                  <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">Workspaces</p>
+                  <div class="mt-4 space-y-2">
+                    <div class="rounded-xl bg-white/10 p-3">
+                      <div class="flex items-center justify-between text-sm font-semibold">
+                        <span>Affiliate</span><span class="text-white/45">38</span>
+                      </div>
+                      <div class="mt-3 space-y-2 text-xs text-white/68">
+                        <div class="flex items-center justify-between rounded-lg bg-blueprint-2/25 px-2 py-2 text-white">
+                          <span>AFF-ID-001</span><span class="rounded bg-white/10 px-1.5 py-0.5">SG</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg px-2 py-2">
+                          <span>AFF-ID-002</span><span class="rounded bg-white/10 px-1.5 py-0.5">JP</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg px-2 py-2">
+                          <span>AFF-ID-003</span><span class="rounded bg-white/10 px-1.5 py-0.5">US</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="rounded-xl border border-white/10 p-3 text-sm text-white/70">Research · 12</div>
+                    <div class="rounded-xl border border-white/10 p-3 text-sm text-white/70">Crypto · 7</div>
+                  </div>
+                </aside>
+
+                <section class="p-5">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">Selected container</p>
+                      <h2 class="mt-1 text-2xl font-black tracking-tight">AFF-ID-001</h2>
+                    </div>
+                    <span class="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-2.5 py-1 text-xs font-bold text-emerald-100">Unlocked</span>
+                  </div>
+
+                  <div class="mt-6 grid grid-cols-2 gap-3 text-sm">
+                    <div class="rounded-2xl bg-white/8 p-4">
+                      <p class="text-white/45">Proxy</p>
+                      <p class="mt-1 font-semibold">socks5 · SG pool</p>
+                    </div>
+                    <div class="rounded-2xl bg-white/8 p-4">
+                      <p class="text-white/45">Fingerprint</p>
+                      <p class="mt-1 font-semibold">Chrome · macOS</p>
+                    </div>
+                    <div class="rounded-2xl bg-white/8 p-4">
+                      <p class="text-white/45">Vault</p>
+                      <p class="mt-1 font-semibold">3 entries · TOTP</p>
+                    </div>
+                    <div class="rounded-2xl bg-white/8 p-4">
+                      <p class="text-white/45">Snapshot</p>
+                      <p class="mt-1 font-semibold">Auto · 30 days</p>
+                    </div>
+                  </div>
+
+                  <div class="mt-6 rounded-2xl border border-white/10 bg-black/18 p-4">
+                    <p class="font-mono text-[10px] uppercase tracking-[0.18em] text-white/45">Bulk action</p>
+                    <div class="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+                      <span class="rounded-full bg-white px-3 py-1.5 text-blueprint">Open URL in 38</span>
+                      <span class="rounded-full bg-white/10 px-3 py-1.5 text-white/70">Assign proxy</span>
+                      <span class="rounded-full bg-white/10 px-3 py-1.5 text-white/70">Snapshot all</span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="border-y border-line/80 bg-panel/70 py-8 backdrop-blur">
+        <div class="mx-auto grid max-w-7xl gap-6 px-5 sm:px-8 md:grid-cols-3 lg:px-10">
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45">Signed</p>
+            <p class="mt-1 text-lg font-black">Mozilla AMO unlisted</p>
+          </div>
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45">Updates</p>
+            <p class="mt-1 text-lg font-black">GitHub Pages update channel</p>
+          </div>
+          <div>
+            <p class="font-mono text-xs uppercase tracking-[0.2em] text-ink/45">License</p>
+            <p class="mt-1 text-lg font-black">MIT · local-first</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="features" class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
+        <div class="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-rust">What it replaces</p>
+            <h2 class="mt-3 text-balance text-4xl font-black tracking-[-0.04em] sm:text-5xl">A container tool for people who stopped counting at five accounts.</h2>
+            <p class="mt-5 text-lg leading-8 text-ink/65">Firefox gives you isolation. Contabox gives you operations: create, open, proxy, fingerprint, snapshot, and lock containers as a group.</p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2">
+            <article class="rounded-3xl border border-line bg-panel/90 p-6 card-shadow">
+              <div class="mb-5 inline-flex rounded-2xl bg-blueprint/10 p-3 text-blueprint">01</div>
+              <h3 class="text-xl font-black tracking-tight">Bulk container ops</h3>
+              <p class="mt-3 leading-7 text-ink/65">Generate <code class="rounded bg-ink/5 px-1.5 py-0.5 font-mono text-sm">affiliate-{n:03}</code>, open one URL across every account, tag, hibernate, or delete selections without tab-by-tab work.</p>
+            </article>
+            <article class="rounded-3xl border border-line bg-panel/90 p-6 card-shadow">
+              <div class="mb-5 inline-flex rounded-2xl bg-rust/10 p-3 text-rust">02</div>
+              <h3 class="text-xl font-black tracking-tight">Proxy + fingerprint</h3>
+              <p class="mt-3 leading-7 text-ink/65">Bind containers to SOCKS/HTTP proxies, rotate pools, health-check endpoints, and apply per-container UA/canvas/WebGL/audio/timezone profiles.</p>
+            </article>
+            <article class="rounded-3xl border border-line bg-panel/90 p-6 card-shadow">
+              <div class="mb-5 inline-flex rounded-2xl bg-moss/10 p-3 text-moss">03</div>
+              <h3 class="text-xl font-black tracking-tight">Vault + autofill</h3>
+              <p class="mt-3 leading-7 text-ink/65">AES-GCM vault, TOTP generator, and a closed-shadow-DOM autofill picker scoped to origin × container. The page never sees long-term secrets.</p>
+            </article>
+            <article class="rounded-3xl border border-line bg-panel/90 p-6 card-shadow">
+              <div class="mb-5 inline-flex rounded-2xl bg-blueprint-2/10 p-3 text-blueprint">04</div>
+              <h3 class="text-xl font-black tracking-tight">Snapshots + locks</h3>
+              <p class="mt-3 leading-7 text-ink/65">Capture cookies, storage, and optional IndexedDB. Auto-snapshot on idle or pre-delete. Hide locked tabs until PIN or master-password unlock.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-[#13233f] py-20 text-white">
+        <div class="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+          <div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-blue-200/70">Feature surface</p>
+              <h2 class="mt-3 text-balance text-4xl font-black tracking-[-0.04em] sm:text-5xl">Built for workflows, not novelty demos.</h2>
+            </div>
+            <div class="grid gap-3 text-sm sm:grid-cols-2">
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Command palette · fuzzy search · tags</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Workspaces · templates · bulk create</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Proxy pools · cooldown · auto-disable</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Fingerprint presets · header rewrite</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Encrypted vault · password/TOTP/note entries</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Cookie editor · Netscape + JSON import/export</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Auto-rules · substring/glob/regex routing</div>
+              <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4">Full encrypted backup · schema-safe updates</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="privacy" class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10">
+        <div class="rounded-[2rem] border border-line bg-panel/90 p-6 card-shadow sm:p-10 lg:p-12">
+          <div class="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
+            <div>
+              <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-moss">Privacy posture</p>
+              <h2 class="mt-3 text-balance text-4xl font-black tracking-[-0.04em]">Local by default, explicit when not.</h2>
+              <p class="mt-5 leading-8 text-ink/65">No account, no hosted backend, no default telemetry. Your browsing state and vault live in Firefox's local IndexedDB under the permanent add-on ID.</p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
+                <p class="font-black">Vault key stays in background</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60">Content scripts receive one short-lived fill secret, never the master key.</p>
+              </div>
+              <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
+                <p class="font-black">No silent network calls</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60">Only proxy checks and opt-in telemetry leave the machine.</p>
+              </div>
+              <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
+                <p class="font-black">Forward-only migrations</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60">Patch and minor updates preserve every stored row. Breaking changes require a major version and forced backup.</p>
+              </div>
+              <div class="rounded-2xl bg-white/60 p-5 ring-1 ring-line/80">
+                <p class="font-black">MIT licensed</p>
+                <p class="mt-2 text-sm leading-6 text-ink/60">Open-source code, documented threat model, reproducible release workflow.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="release" class="mx-auto max-w-7xl px-5 pb-24 sm:px-8 lg:px-10">
+        <div class="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
+          <div class="rounded-[2rem] border border-line bg-panel/90 p-8 card-shadow sm:p-10">
+            <p class="font-mono text-xs font-bold uppercase tracking-[0.22em] text-rust">Install once</p>
+            <h2 class="mt-3 text-4xl font-black tracking-[-0.04em]">Updates are already wired.</h2>
+            <ol class="mt-7 space-y-4 text-ink/70">
+              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">1</span><span>Install the signed XPI from this page.</span></li>
+              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">2</span><span>Firefox stores the add-on with update URL <code class="rounded bg-ink/5 px-1 py-0.5 font-mono text-xs">updates.json</code>.</span></li>
+              <li class="flex gap-4"><span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-blueprint text-sm font-black text-white">3</span><span>Every new GitHub tag signs a fresh XPI and updates the feed automatically.</span></li>
+            </ol>
+          </div>
+          <aside class="rounded-[2rem] border border-blueprint/15 bg-[#13233f] p-8 text-white blueprint-shadow sm:p-10">
+            <p class="font-mono text-xs uppercase tracking-[0.22em] text-white/45">Current build</p>
+            <p class="mt-3 text-5xl font-black tracking-[-0.05em]">v__VERSION__</p>
+            <dl class="mt-8 space-y-4 text-sm">
+              <div class="flex items-center justify-between gap-6 border-b border-white/10 pb-3"><dt class="text-white/45">XPI</dt><dd class="truncate font-mono">__XPI_NAME__</dd></div>
+              <div class="flex items-center justify-between gap-6 border-b border-white/10 pb-3"><dt class="text-white/45">Feed</dt><dd><a class="underline decoration-white/30 underline-offset-4 hover:text-blue-100" href="updates.json">updates.json</a></dd></div>
+              <div class="flex items-center justify-between gap-6 border-b border-white/10 pb-3"><dt class="text-white/45">Source</dt><dd><a class="underline decoration-white/30 underline-offset-4 hover:text-blue-100" href="https://github.com/pripanggalih/contabox">GitHub</a></dd></div>
+            </dl>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="relative z-10 border-t border-line bg-panel/70 px-5 py-8 text-sm text-ink/55 sm:px-8 lg:px-10">
+      <div class="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p>© 2026 Muhammad Wahyu Pripanggalih. MIT licensed.</p>
+        <div class="flex flex-wrap gap-4">
+          <a class="hover:text-blueprint" href="https://github.com/pripanggalih/contabox">Repository</a>
+          <a class="hover:text-blueprint" href="https://github.com/pripanggalih/contabox/blob/main/docs/SECURITY.md">Security</a>
+          <a class="hover:text-blueprint" href="https://github.com/pripanggalih/contabox/blob/main/docs/RELEASE.md">Release notes</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "tsc --noEmit && vite build",
+    "build:landing": "vite build --config vite.landing.config.ts",
     "build:prod": "tsc --noEmit && cross-env NODE_ENV=production vite build",
     "preview": "vite preview",
     "package": "pnpm build:prod && web-ext build --source-dir=dist --artifacts-dir=web-ext-artifacts --overwrite-dest",

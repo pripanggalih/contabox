@@ -143,7 +143,8 @@ jobs:
           XPI_NAME: ${{ steps.sign.outputs.xpi_name }}
           TAG: ${{ github.ref_name }}
         run: |
-          mkdir -p public-pages
+          pnpm build:landing
+
           XPI_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${TAG}/${XPI_NAME}"
 
           # Pull existing updates.json (if any) so we keep previous versions.
@@ -153,30 +154,10 @@ jobs:
           UPDATE_LINK="$XPI_URL" \
             node scripts/build-updates-json.mjs > public-pages/updates.json
 
-          cat > public-pages/index.html <<HTML
-          <!doctype html>
-          <html lang="en"><head>
-            <meta charset="utf-8">
-            <title>Contabox — install</title>
-            <meta name="viewport" content="width=device-width,initial-scale=1">
-            <style>
-              body { font: 15px/1.55 system-ui, -apple-system, sans-serif; max-width: 38rem; margin: 4rem auto; padding: 0 1rem; color: #1a1a1a; }
-              h1 { margin: 0 0 .5rem; font-size: 1.4rem; }
-              code { background: #f3f3f3; padding: 1px 6px; border-radius: 4px; }
-              .btn { display: inline-block; padding: .6rem 1rem; background: #5b8def; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; }
-              .muted { color: #666; }
-            </style>
-          </head><body>
-            <h1>Contabox ${VERSION}</h1>
-            <p>Self-hosted Firefox build. After install, future versions update automatically.</p>
-            <p><a class="btn" href="${XPI_URL}">Install in Firefox</a></p>
-            <p class="muted">Firefox marks every signed-but-unlisted add-on as "this file may be unsafe" on first install. Click <em>Allow</em> on the popup, or drag the XPI onto <code>about:addons</code>.</p>
-            <h2>Update channel</h2>
-            <p>Updates JSON: <a href="updates.json">updates.json</a></p>
-            <p>Latest XPI: <a href="${XPI_URL}">${XPI_NAME}</a></p>
-            <p class="muted">Source: <a href="https://github.com/${REPO_OWNER}/${REPO_NAME}">GitHub</a></p>
-          </body></html>
-          HTML
+          REPO_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}" \
+            UPDATES_URL="$PAGES_URL" \
+            XPI_URL="$XPI_URL" \
+            node scripts/render-landing.mjs
 
       - name: Setup Pages
         if: steps.channel.outputs.value == 'unlisted' && github.ref_type == 'tag'

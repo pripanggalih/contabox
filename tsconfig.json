@@ -30,6 +30,6 @@
       "@ui/*": ["src/ui/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts"],
+  "include": ["src", "vite.config.ts", "vite.landing.config.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "web-ext-artifacts"]
 }
