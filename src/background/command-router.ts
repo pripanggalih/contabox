@@ -29,6 +29,7 @@ import { totp } from '@shared/totp';
 import { autoRuleEngine } from './auto-rule-engine';
 import { autoSnapshotEngine } from './auto-snapshot';
 import { autofillResolver } from './autofill-resolver';
+import { backupManager } from './backup-manager';
 import { containerManager } from './container-manager';
 import { cookieManager } from './cookie-manager';
 import { fingerprintManager } from './fingerprint-engine';
@@ -545,6 +546,26 @@ export class CommandRouter {
     // Snapshot retention pruning
     this.add('snapshot.prune', async (cmd) => autoSnapshotEngine.prune(cmd.payload.containerId));
     this.add('snapshot.pruneAll', async () => autoSnapshotEngine.pruneAll());
+
+    // Full-data backup
+    this.add('backup.exportPlain', async () => backupManager.exportPlain());
+    this.add('backup.exportEncrypted', async (cmd) =>
+      backupManager.exportEncrypted(cmd.payload.password),
+    );
+    this.add('backup.import', async (cmd) => {
+      const r = await backupManager.import(cmd.payload.bundle, cmd.payload.password);
+      // Broadcast every store so the UI re-fetches.
+      void broadcast({ type: 'state.containers' });
+      void broadcast({ type: 'state.workspaces' });
+      void broadcast({ type: 'state.templates' });
+      void broadcast({ type: 'state.proxies' });
+      void broadcast({ type: 'state.fingerprints' });
+      void broadcast({ type: 'state.snapshots' });
+      void broadcast({ type: 'state.autoRules' });
+      void broadcast({ type: 'state.vault' });
+      void broadcast({ type: 'state.locks' });
+      return r;
+    });
   }
 
   private add<T extends CommandType>(

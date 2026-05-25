@@ -145,6 +145,30 @@ Contabox is local-first.
 - Export everything as encrypted JSON, or remove the extension to delete
   it all.
 
+## Versioning policy
+
+The on-disk schema (Dexie / IndexedDB) follows a strict
+"data-preserving by default" rule:
+
+- **Patch (`0.1.0` → `0.1.1`)** — bug fixes, new features. Schema is
+  unchanged or extended additively (new columns / indexes only). Auto-update
+  preserves all data. **Always safe.**
+- **Minor (`0.1.0` → `0.2.0`)** — feature work. May add new tables. Existing
+  rows are never deleted or restructured. Auto-update preserves all data.
+  **Always safe.**
+- **Major (`0.x` → `1.0`)** — possibly breaking. Will be announced in the
+  release notes with a migration path **and** a forced backup prompt before
+  the upgrade applies. Triggered manually only.
+
+Background: every code path that opens the database goes through Dexie
+versioned migrations declared in `src/shared/db.ts`. They are forward-only
+and additive — see [`AGENTS.md`](AGENTS.md) cardinal rules.
+
+If you're paranoid before an update: **Options → Privacy → Backup &amp;
+restore → Encrypted backup** dumps every container, workspace, snapshot,
+proxy, rule, and vault entry into one AES-GCM-encrypted JSON file. Restore
+is one click on a fresh install.
+
 ---
 
 ## For developers
@@ -324,9 +348,8 @@ Track progress in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ### License
 
-License TBD — currently unlicensed pending public release decision (likely
-MIT or AGPL-3.0 by M8). Until then, the source is published for
-transparency only; please open an issue before redistributing.
+MIT — see [`LICENSE`](LICENSE). Use it, fork it, ship it. Just keep the
+copyright notice.
 
 ### Acknowledgements
 

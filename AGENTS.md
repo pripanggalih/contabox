@@ -75,6 +75,12 @@ Path aliases (vite + tsconfig + vitest):
    out cookies must respect `isEffectivelyLocked`.
 10. **Don't commit secrets.** `.env` / `.env.local` are gitignored. AMO API
     creds live in GitHub Secrets only.
+11. **Schema migrations are forward-only and additive.** Patch and minor
+    bumps must preserve every IndexedDB row a user might already have. Add
+    new tables, add new columns, backfill defaults — never delete columns,
+    never rename keyPaths, never wipe a store. Breaking changes require
+    a major bump AND a forced-backup migration step that prompts the user
+    before applying.
 
 ## Build, test, run
 

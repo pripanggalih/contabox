@@ -142,4 +142,5 @@ Docs live in `docs/`. When you change behavior, update:
 
 ## License
 
-By contributing, you agree your contributions are licensed under the project license (TBD: MIT or AGPL-3.0, decided before public beta).
+By contributing, you agree your contributions are licensed under the
+project's [MIT License](../LICENSE).

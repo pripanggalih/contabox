@@ -172,7 +172,11 @@ export type Command =
   | { type: 'settings.exportDebugLogs' }
   // snapshots: prune
   | { type: 'snapshot.prune'; payload: { containerId: string } }
-  | { type: 'snapshot.pruneAll' };
+  | { type: 'snapshot.pruneAll' }
+  // backup
+  | { type: 'backup.exportPlain' }
+  | { type: 'backup.exportEncrypted'; payload: { password: string } }
+  | { type: 'backup.import'; payload: { bundle: unknown; password?: string } };
 
 export type CommandType = Command['type'];
 
@@ -276,6 +280,9 @@ export type ResultMap = {
   'settings.exportDebugLogs': string;
   'snapshot.prune': { deleted: number };
   'snapshot.pruneAll': { deleted: number };
+  'backup.exportPlain': import('../background/backup-manager').BackupBundle;
+  'backup.exportEncrypted': import('../background/backup-manager').BackupBundle;
+  'backup.import': { restored: number };
 };
 
 export type CommandResult<T extends CommandType> =

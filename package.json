@@ -2,6 +2,16 @@
   "name": "contabox",
   "version": "0.1.0",
   "description": "Advanced Firefox container manager. Multi-Account Containers + SessionBox killer.",
+  "license": "MIT",
+  "author": "Muhammad Wahyu Pripanggalih",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pripanggalih/contabox.git"
+  },
+  "homepage": "https://pripanggalih.github.io/contabox/",
+  "bugs": {
+    "url": "https://github.com/pripanggalih/contabox/issues"
+  },
   "private": true,
   "type": "module",
   "scripts": {
