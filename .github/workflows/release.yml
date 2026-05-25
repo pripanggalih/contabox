@@ -4,20 +4,19 @@ on:
   push:
     tags:
       - 'v*'
-  # Allow manual dispatch as a safety valve.
   workflow_dispatch:
     inputs:
       channel:
-        description: 'AMO channel'
+        description: 'AMO channel (unlisted = self-host, listed = public AMO)'
         required: true
-        default: 'listed'
+        default: 'unlisted'
         type: choice
         options:
-          - listed
           - unlisted
+          - listed
 
-# Only let one release run at a time. Cancel-in-progress is OFF deliberately —
-# we do NOT want to abort a half-submitted AMO upload.
+# Allow only one release at a time. Never cancel mid-flight; an interrupted
+# AMO upload is a manual mess to clean up.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -26,10 +25,14 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # required for creating GitHub Releases
+      contents: write # GitHub Releases + push to gh-pages
+      pages: write
+      id-token: write
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need history for the gh-pages worktree
 
       - uses: pnpm/action-setup@v4
         with:
@@ -44,6 +47,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify version sync
+        id: version
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
           MANIFEST_VERSION=$(node -p "require('./public/manifest.json').version")
@@ -51,7 +55,6 @@ jobs:
             echo "::error::package.json ($PKG_VERSION) and manifest.json ($MANIFEST_VERSION) drift. Run pnpm version:bump."
             exit 1
           fi
-          # If triggered by a tag, the tag must equal v$PKG_VERSION.
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             EXPECTED="v$PKG_VERSION"
             if [ "${GITHUB_REF_NAME}" != "$EXPECTED" ]; then
@@ -59,8 +62,7 @@ jobs:
               exit 1
             fi
           fi
-          echo "version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
-        id: version
+          echo "value=$PKG_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Lint
         run: pnpm lint
@@ -71,15 +73,11 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Build
+      - name: Build (production)
         run: pnpm build:prod
 
-      - name: web-ext lint (manifest sanity)
-        # Non-blocking; some warnings are intentional (e.g. broad <all_urls>).
+      - name: web-ext lint (manifest sanity, non-blocking)
         run: pnpm exec web-ext lint --source-dir=dist || true
-
-      - name: Build unsigned XPI (artifact)
-        run: pnpm exec web-ext build --source-dir=dist --artifacts-dir=web-ext-artifacts --overwrite-dest
 
       - name: Determine AMO channel
         id: channel
@@ -87,16 +85,17 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "value=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
           else
-            echo "value=listed" >> "$GITHUB_OUTPUT"
+            echo "value=unlisted" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Sign + submit to AMO
+        id: sign
         env:
           AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
           if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
-            echo "::error::AMO_JWT_ISSUER / AMO_JWT_SECRET secrets are not set in this repo."
+            echo "::error::AMO_JWT_ISSUER / AMO_JWT_SECRET secrets are not set."
             exit 1
           fi
           pnpm exec web-ext sign \
@@ -105,15 +104,22 @@ jobs:
             --channel=${{ steps.channel.outputs.value }} \
             --api-key="$AMO_JWT_ISSUER" \
             --api-secret="$AMO_JWT_SECRET"
+          # Capture the signed XPI path for downstream steps.
+          XPI_PATH=$(ls web-ext-artifacts/*.xpi | head -n1)
+          if [ -z "$XPI_PATH" ]; then
+            echo "::error::No signed XPI produced by web-ext sign."
+            exit 1
+          fi
+          XPI_NAME=$(basename "$XPI_PATH")
+          echo "xpi_path=$XPI_PATH" >> "$GITHUB_OUTPUT"
+          echo "xpi_name=$XPI_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload XPI artifact
         uses: actions/upload-artifact@v4
         with:
-          name: contabox-${{ steps.version.outputs.version }}-xpi
-          path: |
-            web-ext-artifacts/*.xpi
-            web-ext-artifacts/*.zip
-          if-no-files-found: warn
+          name: contabox-${{ steps.version.outputs.value }}-xpi
+          path: web-ext-artifacts/*.xpi
+          if-no-files-found: error
           retention-days: 90
 
       - name: Create GitHub Release (only on tag)
@@ -123,8 +129,67 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: |
-            web-ext-artifacts/*.xpi
-            web-ext-artifacts/*.zip
+          files: web-ext-artifacts/*.xpi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ---- Auto-update via GitHub Pages -------------------------------------
+      # Only on unlisted releases. AMO listed handles its own update channel.
+      - name: Build Pages site (updates.json + index)
+        if: steps.channel.outputs.value == 'unlisted' && github.ref_type == 'tag'
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          ADDON_ID: contabox@galih.dev
+          VERSION: ${{ steps.version.outputs.value }}
+          XPI_NAME: ${{ steps.sign.outputs.xpi_name }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p public-pages
+          XPI_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/download/${TAG}/${XPI_NAME}"
+
+          # Pull existing updates.json (if any) so we keep previous versions.
+          PAGES_URL="https://${REPO_OWNER}.github.io/${REPO_NAME}/updates.json"
+          curl -fsSL "$PAGES_URL" -o existing.json || echo '{}' > existing.json
+
+          UPDATE_LINK="$XPI_URL" \
+            node scripts/build-updates-json.mjs > public-pages/updates.json
+
+          cat > public-pages/index.html <<HTML
+          <!doctype html>
+          <html lang="en"><head>
+            <meta charset="utf-8">
+            <title>Contabox — install</title>
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <style>
+              body { font: 15px/1.55 system-ui, -apple-system, sans-serif; max-width: 38rem; margin: 4rem auto; padding: 0 1rem; color: #1a1a1a; }
+              h1 { margin: 0 0 .5rem; font-size: 1.4rem; }
+              code { background: #f3f3f3; padding: 1px 6px; border-radius: 4px; }
+              .btn { display: inline-block; padding: .6rem 1rem; background: #5b8def; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; }
+              .muted { color: #666; }
+            </style>
+          </head><body>
+            <h1>Contabox ${VERSION}</h1>
+            <p>Self-hosted Firefox build. After install, future versions update automatically.</p>
+            <p><a class="btn" href="${XPI_URL}">Install in Firefox</a></p>
+            <p class="muted">Firefox marks every signed-but-unlisted add-on as "this file may be unsafe" on first install. Click <em>Allow</em> on the popup, or drag the XPI onto <code>about:addons</code>.</p>
+            <h2>Update channel</h2>
+            <p>Updates JSON: <a href="updates.json">updates.json</a></p>
+            <p>Latest XPI: <a href="${XPI_URL}">${XPI_NAME}</a></p>
+            <p class="muted">Source: <a href="https://github.com/${REPO_OWNER}/${REPO_NAME}">GitHub</a></p>
+          </body></html>
+          HTML
+
+      - name: Setup Pages
+        if: steps.channel.outputs.value == 'unlisted' && github.ref_type == 'tag'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: steps.channel.outputs.value == 'unlisted' && github.ref_type == 'tag'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public-pages
+
+      - name: Deploy to GitHub Pages
+        if: steps.channel.outputs.value == 'unlisted' && github.ref_type == 'tag'
+        uses: actions/deploy-pages@v4
