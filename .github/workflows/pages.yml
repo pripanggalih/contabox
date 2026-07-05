@@ -6,6 +6,7 @@ on:
     paths:
       - 'web/**'
       - 'scripts/render-landing.mjs'
+      - 'scripts/updates-from-releases.mjs'
       - 'vite.landing.config.ts'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -39,9 +40,15 @@ jobs:
           ADDON_ID: contabox@galih.dev
           REPO_URL: https://github.com/${{ github.repository }}
           UPDATES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/updates.json
+          GH_TOKEN: ${{ github.token }}
         run: |
           pnpm build:landing
-          curl -fsSL "$UPDATES_URL" -o public-pages/updates.json || echo '{}' > public-pages/updates.json
+          # Derive updates.json from GitHub Releases (source of truth), NOT from
+          # the live Pages file — otherwise this workflow and release.yml race on
+          # a push and the stale fetch can clobber a just-published version.
+          gh api "repos/${{ github.repository }}/releases" \
+            --jq '[.[] | {tagName:.tag_name, assets:[.assets[]|{name,url:.browser_download_url,digest}]}]' \
+            | node scripts/updates-from-releases.mjs > public-pages/updates.json
           node scripts/render-landing.mjs
 
       - name: Setup Pages
