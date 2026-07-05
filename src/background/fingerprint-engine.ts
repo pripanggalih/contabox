@@ -23,11 +23,15 @@ export class FingerprintEngine {
 
   async attach(): Promise<void> {
     if (this.attached) return;
-    await this.seedDefaultsIfEmpty();
-    await this.refresh();
+    // Register the tab hook + header-rewrite listeners FIRST (synchronously).
+    // MV3 event pages must add listeners in the first turn; doing it after the
+    // awaits below risks missing the navigation that woke the worker. Until
+    // `refresh()` fills the routing map, both handlers simply no-op (safe).
     this.attachTabHook();
     this.attachHeaderRewrite();
     this.attached = true;
+    await this.seedDefaultsIfEmpty();
+    await this.refresh();
   }
 
   /** Recompute routing. Call after assignment changes. */
@@ -66,7 +70,10 @@ export class FingerprintEngine {
       if (!scripting?.executeScript) return;
       try {
         await scripting.executeScript({
-          target: { tabId },
+          // Cover sub-frames too: ad/tracker iframes are the usual
+          // fingerprinting surface, and a frame seeing the real navigator.* while
+          // the UA header is spoofed is a trivially-detectable inconsistency.
+          target: { tabId, allFrames: true } as never,
           world: 'MAIN' as never,
           injectImmediately: true as never,
           args: [serializeProfile(profile)] as never,
@@ -184,7 +191,12 @@ function spoofFn(fp: SerializedProfile): void {
   defineGetter(Navigator.prototype, 'language', fp.language);
   defineGetter(Navigator.prototype, 'languages', Object.freeze([fp.language, 'en']));
   defineGetter(Navigator.prototype, 'hardwareConcurrency', fp.hardwareConcurrency);
-  defineGetter(Navigator.prototype, 'deviceMemory', fp.deviceMemory);
+  // Only spoof deviceMemory where the browser actually exposes it. Firefox does
+  // NOT implement navigator.deviceMemory — defining it there is itself a tell
+  // (real Firefox returns undefined).
+  if ('deviceMemory' in Navigator.prototype || 'deviceMemory' in navigator) {
+    defineGetter(Navigator.prototype, 'deviceMemory', fp.deviceMemory);
+  }
 
   defineGetter(Screen.prototype, 'width', fp.width);
   defineGetter(Screen.prototype, 'height', fp.height);

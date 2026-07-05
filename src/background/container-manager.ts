@@ -207,14 +207,52 @@ export class ContainerManager {
       icon: pending.native.icon,
     })) as unknown as NativeContainer;
 
-    // The recreated container has a NEW cookieStoreId. Re-key the ext row.
-    const newExt: ContainerExt = {
-      ...pending.ext,
-      cookieStoreId: recreated.cookieStoreId,
-    };
-    await getDb().containers.put(newExt);
+    const oldId = cookieStoreId;
+    const newId = recreated.cookieStoreId;
+
+    // The recreated container has a NEW cookieStoreId. Re-key the ext row AND
+    // every foreign reference (snapshots, rules, container-scoped vault
+    // entries) in one transaction so "undo" doesn't silently orphan the user's
+    // snapshots / rules / credentials against the dead id.
+    const db = getDb();
+    const newExt: ContainerExt = { ...pending.ext, cookieStoreId: newId };
+    await db.transaction('rw', [db.containers, db.snapshots, db.rules, db.vault], async () => {
+      await db.containers.delete(oldId);
+      await db.containers.put(newExt);
+      await db.snapshots.where('containerId').equals(oldId).modify({ containerId: newId });
+      await db.rules.where('containerId').equals(oldId).modify({ containerId: newId });
+      await db.vault.where('containerId').equals(oldId).modify({ containerId: newId });
+    });
 
     return { ...recreated, ext: newExt };
+  }
+
+  /**
+   * Startup reconciliation: remove ext rows whose native container no longer
+   * exists. Covers the case where the event page suspended during the 5s undo
+   * window (the setTimeout purge never fired) or a backup was restored across
+   * Firefox profiles. Undo is in-memory only, so a row with no native peer at
+   * startup can never be undone — pruning it is safe.
+   */
+  async reconcileOrphans(): Promise<{ pruned: number }> {
+    const natives = (await browser.contextualIdentities.query({})) as unknown as NativeContainer[];
+    const valid = new Set(natives.map((n) => n.cookieStoreId));
+    const exts = await getDb().containers.toArray();
+    // Safety: never wipe every ext row on an empty native list. A genuine
+    // "user deleted all containers" state leaves only harmless orphan rows,
+    // whereas a transient empty query would otherwise destroy all metadata.
+    if (natives.length === 0 && exts.length > 0) {
+      console.warn('[contabox] reconcileOrphans: native list empty, skipping prune');
+      return { pruned: 0 };
+    }
+    let pruned = 0;
+    for (const e of exts) {
+      if (!valid.has(e.cookieStoreId)) {
+        await getDb().containers.delete(e.cookieStoreId);
+        pruned++;
+      }
+    }
+    return { pruned };
   }
 
   async bulkCreate(input: BulkCreateInput): Promise<ContainerView[]> {
@@ -257,7 +295,9 @@ export class ContainerManager {
         });
 
     if (!tab.id) throw new Error('tab create returned no id');
-    await getDb().containers.update(cookieStoreId, { lastUsedAt: now() });
+    // Upsert so lastUsedAt is recorded even for native containers Contabox
+    // hasn't persisted an ext row for yet (update() would match 0 rows).
+    await getDb().containers.put({ ...view.ext, lastUsedAt: now() });
     return { tabId: tab.id };
   }
 
@@ -420,6 +460,9 @@ export class ContainerManager {
     let opened = 0;
     for (const cookieStoreId of input.containerIds) {
       try {
+        // Honor the lock: never open a tab (with live cookies) in a container
+        // the user hasn't unlocked this session. Throws → counted as skipped.
+        await lockManager.assertOpenAllowed(cookieStoreId);
         if (input.newWindow) {
           await this.openInNewWindow(input.url, cookieStoreId);
         } else {

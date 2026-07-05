@@ -6,6 +6,8 @@
  *   ADDON_ID    e.g. contabox@galih.dev
  *   VERSION     e.g. 0.1.1
  *   UPDATE_LINK URL of the signed XPI
+ *   UPDATE_HASH (optional) e.g. sha256:abc123…  — pins the exact artifact so a
+ *               swapped GitHub Releases asset can't be silently served.
  *
  * Reads `existing.json` from cwd (previous live updates.json fetched from
  * Pages) so older versions stay listed. Writes the merged JSON to stdout.
@@ -15,6 +17,7 @@ import { readFileSync } from 'node:fs';
 const id = process.env.ADDON_ID;
 const version = process.env.VERSION;
 const updateLink = process.env.UPDATE_LINK;
+const updateHash = process.env.UPDATE_HASH;
 
 if (!id || !version || !updateLink) {
   console.error('Missing one of ADDON_ID / VERSION / UPDATE_LINK');
@@ -30,7 +33,9 @@ try {
 
 const previous = existing.addons?.[id]?.updates ?? [];
 const filtered = previous.filter((u) => u.version !== version);
-const merged = [...filtered, { version, update_link: updateLink }].sort((a, b) =>
+const entry = { version, update_link: updateLink };
+if (updateHash) entry.update_hash = updateHash;
+const merged = [...filtered, entry].sort((a, b) =>
   a.version.localeCompare(b.version, undefined, { numeric: true }),
 );
 

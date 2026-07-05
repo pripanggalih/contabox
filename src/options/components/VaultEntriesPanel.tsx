@@ -4,6 +4,31 @@ import { Copy, KeyRound, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useOptionsStore } from '../state/store';
 
+/** How long a revealed secret stays on screen before auto-hiding (ms). */
+const REVEAL_TTL_MS = 30_000;
+/** How long a copied secret lingers before we blank the clipboard (ms). */
+const CLIPBOARD_TTL_MS = 25_000;
+
+/**
+ * Copy a secret and schedule a clipboard wipe. Best-effort: only clears if the
+ * clipboard still holds exactly what we wrote (so we never clobber something
+ * the user copied in the meantime). Clipboard read can be blocked without
+ * focus/permission — then we skip the clear rather than risk clobbering.
+ */
+async function copyEphemeral(text: string): Promise<void> {
+  await navigator.clipboard.writeText(text);
+  setTimeout(() => {
+    void (async () => {
+      try {
+        const current = await navigator.clipboard.readText();
+        if (current === text) await navigator.clipboard.writeText('');
+      } catch {
+        /* clipboard read unavailable — leave it */
+      }
+    })();
+  }, CLIPBOARD_TTL_MS);
+}
+
 interface Entry {
   id: string;
   scope: 'global' | 'container';
@@ -156,6 +181,14 @@ function Group({
 function RevealRow({ entry }: { entry: Entry }) {
   const [revealed, setRevealed] = useState<string | null>(null);
 
+  // Auto-hide the plaintext after a timeout so it doesn't linger in the DOM
+  // (and outlive a vault relock) if the user walks away.
+  useEffect(() => {
+    if (!revealed) return;
+    const t = setTimeout(() => setRevealed(null), REVEAL_TTL_MS);
+    return () => clearTimeout(t);
+  }, [revealed]);
+
   async function reveal() {
     if (revealed) {
       setRevealed(null);
@@ -182,7 +215,7 @@ function RevealRow({ entry }: { entry: Entry }) {
       {revealed ? (
         <button
           type="button"
-          onClick={() => navigator.clipboard.writeText(revealed)}
+          onClick={() => copyEphemeral(revealed)}
           aria-label="Copy"
           className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]"
         >
@@ -223,7 +256,7 @@ function TotpRow({ entry }: { entry: Entry }) {
       <span className="text-xs text-[var(--color-text-muted)]">{remaining}s</span>
       <button
         type="button"
-        onClick={() => code && navigator.clipboard.writeText(code)}
+        onClick={() => code && copyEphemeral(code)}
         aria-label="Copy"
         className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)] hover:text-[var(--color-text-primary)]"
       >
@@ -257,12 +290,17 @@ function AddEntryForm({ onDone }: { onDone: () => void }) {
       let storedSecret = secret;
       let resolvedLabel = label.trim();
       let resolvedOrigin = origin.trim();
+      let totpParams:
+        | { period: number; digits: number; algorithm: 'SHA-1' | 'SHA-256' | 'SHA-512' }
+        | undefined;
 
       if (kind === 'totp' && /^otpauth:\/\//i.test(secret.trim())) {
         const parsed = parseOtpauthUri(secret.trim());
         storedSecret = parsed.secret;
         resolvedLabel = resolvedLabel || parsed.label;
         resolvedOrigin = resolvedOrigin || parsed.issuer || '';
+        // Persist non-default params so codes match the issuer.
+        totpParams = { period: parsed.period, digits: parsed.digits, algorithm: parsed.algorithm };
       }
 
       await invoke({
@@ -273,6 +311,7 @@ function AddEntryForm({ onDone }: { onDone: () => void }) {
           label: resolvedLabel,
           origin: resolvedOrigin,
           secret: storedSecret,
+          ...(totpParams ? { totp: totpParams } : {}),
         },
       });
       onDone();

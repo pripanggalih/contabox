@@ -106,7 +106,9 @@ function RuleForm({
   onDone: () => void;
 }) {
   const [pattern, setPattern] = useState('');
-  const [patternType, setPatternType] = useState<'substring' | 'glob' | 'regex'>('glob');
+  const [patternType, setPatternType] = useState<'domain' | 'substring' | 'glob' | 'regex'>(
+    'domain',
+  );
   const [containerId, setContainerId] = useState('');
   const [testUrl, setTestUrl] = useState('');
   const [testResult, setTestResult] = useState<boolean | null>(null);
@@ -171,7 +173,9 @@ function RuleForm({
                 ? 'https://*.figma.com/*'
                 : patternType === 'regex'
                   ? '^https://github\\.com/'
-                  : 'github.com'
+                  : patternType === 'domain'
+                    ? 'github.com'
+                    : 'github.com'
             }
           />
         </label>
@@ -184,6 +188,7 @@ function RuleForm({
             onChange={(e) => setPatternType(e.target.value as never)}
             className="input"
           >
+            <option value="domain">domain</option>
             <option value="substring">substring</option>
             <option value="glob">glob</option>
             <option value="regex">regex</option>

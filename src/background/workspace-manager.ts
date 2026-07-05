@@ -10,6 +10,7 @@ import { getDb } from '@shared/db';
 import type { WorkspaceInput } from '@shared/schemas';
 import type { Workspace } from '@shared/types';
 import { now, uuid } from '@shared/utils';
+import { lockManager } from './lock-manager';
 
 export class WorkspaceManager {
   async list(): Promise<Workspace[]> {
@@ -73,6 +74,8 @@ export class WorkspaceManager {
     for (const c of containers) {
       const url = c.defaultUrl ?? ws.defaultUrls[0];
       try {
+        // Skip locked containers — opening would expose their cookies.
+        await lockManager.assertOpenAllowed(c.cookieStoreId);
         await browser.tabs.create({
           cookieStoreId: c.cookieStoreId,
           active: false,

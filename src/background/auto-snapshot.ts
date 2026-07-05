@@ -34,7 +34,11 @@ export class AutoSnapshotEngine {
 
   async attach(): Promise<void> {
     if (this.attached) return;
-    await this.bootstrapTabCounts();
+    this.attached = true;
+
+    // Register listeners FIRST (synchronously). MV3 event pages must add
+    // listeners in the first turn; doing it after `await bootstrapTabCounts()`
+    // risks missing the tab/alarm event that woke the worker.
 
     // Note: pre-delete snapshots are taken in `containerManager.delete` since
     // `contextualIdentities.onRemoved` fires AFTER the cookie store is gone,
@@ -71,7 +75,8 @@ export class AutoSnapshotEngine {
       });
     }
 
-    this.attached = true;
+    // Async warm-up AFTER listeners are wired.
+    await this.bootstrapTabCounts();
   }
 
   private async afterTabRemoved(_tabId: number, _info: unknown): Promise<void> {

@@ -5,6 +5,7 @@
  * Keep this file thin — actual logic lives in per-engine modules.
  */
 import { browser } from '@shared/browser';
+import { broadcast } from '@shared/messaging';
 import { autoRuleEngine } from './auto-rule-engine';
 import { autoSnapshotEngine } from './auto-snapshot';
 import { commandRouter } from './command-router';
@@ -14,6 +15,7 @@ import { lockManager } from './lock-manager';
 import { macImporter } from './mac-importer';
 import { installLogRing } from './privacy';
 import { proxyEngine } from './proxy-engine';
+import { vault } from './vault';
 import { webRtcEngine } from './webrtc-engine';
 
 // Capture early console output for the debug-logs export. Safe to install
@@ -23,6 +25,23 @@ installLogRing();
 // Attach the message router FIRST so the UI can talk to BG even if other
 // engines fail to initialize. Anything below is best-effort.
 commandRouter.attach();
+
+// Wire the vault auto-lock so it performs the SAME teardown as a manual lock
+// (invalidate proxy creds, relock per-container sessions, refresh the UI) and
+// register its alarm listener synchronously (MV3 event-page requirement).
+vault.setLockSideEffects(async () => {
+  proxyEngine.invalidate();
+  await lockManager.relockAll();
+  void broadcast({ type: 'state.vault' });
+  void broadcast({ type: 'state.locks' });
+});
+vault.attachAutoLock();
+
+// Prune ext rows whose native container vanished (suspend during an undo
+// window, cross-profile restore). Best-effort.
+containerManager.reconcileOrphans().catch((err) => {
+  console.warn('[contabox] reconcileOrphans failed', err);
+});
 
 // Idempotent — adopts any native container Contabox doesn't yet know into
 // the "Firefox Default" workspace. Runs on every startup so containers

@@ -90,7 +90,7 @@ export class AutofillResolver {
     entryId: string,
     requestingCookieStoreId: string,
     requestingOrigin: string,
-  ): Promise<{ secret: string; kind: VaultEntry['kind'] }> {
+  ): Promise<{ secret: string; kind: VaultEntry['kind']; totp?: VaultEntry['totp'] }> {
     if (!vault.isUnlocked()) throw new Error('vault is locked');
     const row = await getDb().vault.get(entryId);
     if (!row) throw new Error('entry not found');
@@ -107,7 +107,7 @@ export class AutofillResolver {
     }
 
     const secret = await vault.getSecret(entryId);
-    return { secret, kind: row.kind };
+    return { secret, kind: row.kind, totp: row.totp };
   }
 
   /**

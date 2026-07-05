@@ -67,6 +67,14 @@ export interface ContainerExt {
    */
   snapshotIncludeIdb?: boolean;
   retentionDays?: number;
+  /**
+   * When a proxy is assigned but currently unavailable (missing / disabled /
+   * lookup error), ProxyEngine fails CLOSED — it blackholes the request rather
+   * than silently falling back to the direct connection and leaking the real
+   * IP. Set to `false` to opt a container out (fall back to direct). Default
+   * (undefined) is treated as fail-closed.
+   */
+  proxyFailClosed?: boolean;
   defaultUrl?: string;
   /** Optional hex override. When set, sidebar/popup render this instead of the
    *  9 native Firefox colors. The native `contextualIdentities` color is the
@@ -183,8 +191,18 @@ export interface Snapshot {
   containerId: string;
   label: string;
   createdAt: number;
+  /**
+   * Plaintext origins. Populated only when `encrypted === false`. When the
+   * snapshot is encrypted, this is an empty array and the real payload lives
+   * in `cipher`/`iv` (AES-GCM of `JSON.stringify(SnapshotOrigin[])` under the
+   * vault master key).
+   */
   origins: SnapshotOrigin[];
   encrypted: boolean;
+  /** AES-GCM ciphertext of the origins array. Present iff `encrypted`. */
+  cipher?: string;
+  /** AES-GCM IV for `cipher`. Present iff `encrypted`. */
+  iv?: string;
 }
 
 export interface SnapshotOrigin {
@@ -210,6 +228,13 @@ export interface SnapshotIdbStore {
   name: string;
   keyPath: string | string[] | null;
   autoIncrement: boolean;
+  /** Secondary indexes on the store, recreated verbatim on restore. */
+  indexes?: Array<{
+    name: string;
+    keyPath: string | string[];
+    unique: boolean;
+    multiEntry: boolean;
+  }>;
   /**
    * Records as `{ key, value }` pairs. `key` is `null` when keyPath is set
    * (Firefox derives the key from the value); explicit when out-of-line.
@@ -233,7 +258,7 @@ export interface SnapshotCookie {
 export interface AutoRule {
   id: string;
   pattern: string;
-  patternType: 'substring' | 'glob' | 'regex';
+  patternType: 'domain' | 'substring' | 'glob' | 'regex';
   containerId: string;
   enabled: boolean;
   order: number;
@@ -242,6 +267,8 @@ export interface AutoRule {
 }
 
 export type VaultEntryKind = 'password' | 'totp' | 'note' | 'proxy-credential';
+
+export type TotpAlgorithm = 'SHA-1' | 'SHA-256' | 'SHA-512';
 
 export interface VaultEntry {
   id: string;
@@ -252,6 +279,12 @@ export interface VaultEntry {
   label: string;
   cipher: string;
   iv: string;
+  /**
+   * TOTP parameters, present only for `kind === 'totp'`. Captured from the
+   * `otpauth://` URI so issuers using non-default period/digits/algorithm
+   * produce correct codes. Absent → RFC 6238 defaults (30s / 6 / SHA-1).
+   */
+  totp?: { period: number; digits: number; algorithm: TotpAlgorithm };
   createdAt: number;
   updatedAt: number;
 }

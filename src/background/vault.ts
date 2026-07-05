@@ -23,10 +23,13 @@ import {
 } from '@shared/crypto';
 import { getDb } from '@shared/db';
 import { META_VAULT_AUTOLOCK_MIN, META_VAULT_SALT, META_VAULT_VERIFIER } from '@shared/meta-keys';
-import type { VaultEntry, VaultEntryKind } from '@shared/types';
+import { totp } from '@shared/totp';
+import type { TotpAlgorithm, VaultEntry, VaultEntryKind } from '@shared/types';
 import { now, uuid } from '@shared/utils';
 
 const VERIFIER_PLAIN = 'contabox-vault-v1';
+const VAULT_AUTOLOCK_ALARM = 'contabox.vault.autolock';
+const MIN_MASTER_PASSWORD_LEN = 8;
 
 interface VerifierRecord extends Encrypted {
   /* same shape; alias for clarity */
@@ -46,6 +49,7 @@ export interface VaultPlainEntry {
   kind: VaultEntryKind;
   label: string;
   secret: string;
+  totp?: { period: number; digits: number; algorithm: TotpAlgorithm };
   createdAt: number;
   updatedAt: number;
 }
@@ -78,6 +82,9 @@ export class Vault {
 
   /** Initialize the vault with a fresh master password. */
   async initialize(password: string): Promise<void> {
+    if (password.length < MIN_MASTER_PASSWORD_LEN) {
+      throw new Error(`master password must be ≥ ${MIN_MASTER_PASSWORD_LEN} characters`);
+    }
     if ((await this.status()).initialized) {
       throw new Error('vault already initialized');
     }
@@ -113,6 +120,7 @@ export class Vault {
 
   lock(): void {
     this.key = null;
+    this.clearAutoLockAlarm();
   }
 
   isUnlocked(): boolean {
@@ -136,11 +144,33 @@ export class Vault {
       label: input.label,
       cipher: enc.cipher,
       iv: enc.iv,
+      ...(input.kind === 'totp' && input.totp ? { totp: input.totp } : {}),
       createdAt: now(),
       updatedAt: now(),
     };
     await getDb().vault.put(row);
     return row.id;
+  }
+
+  /**
+   * Generate the current TOTP code for an entry using its stored parameters
+   * (period/digits/algorithm), so issuers on non-default settings work. The
+   * long-term shared seed never leaves the background.
+   */
+  async totpFor(id: string): Promise<string> {
+    const row = await getDb().vault.get(id);
+    if (!row) throw new Error('vault entry not found');
+    const secret = await this.getSecret(id);
+    return totp(secret, row.totp ?? {});
+  }
+
+  /** Encrypt/decrypt arbitrary payloads (e.g. snapshot bodies) under the master
+   *  key. Requires the vault to be unlocked. */
+  async encrypt(plaintext: string): Promise<Encrypted> {
+    return encryptString(this.requireKey(), plaintext);
+  }
+  async decrypt(payload: Encrypted): Promise<string> {
+    return decryptString(this.requireKey(), payload);
   }
 
   async updateEntry(id: string, secret: string): Promise<void> {
@@ -191,8 +221,40 @@ export class Vault {
 
   /* ---------- auto-lock ---------- */
 
-  private autoLockTimer: ReturnType<typeof setTimeout> | null = null;
   private autoLockMinutes = 15;
+  /**
+   * Side effects the command layer performs on lock (invalidate proxy cache,
+   * relock per-container sessions, broadcast state). Registered once at startup
+   * so the auto-lock alarm performs the SAME teardown as a manual lock — not
+   * just dropping the key while UI keeps rendering revealed secrets.
+   */
+  private lockSideEffects: (() => Promise<void>) | null = null;
+
+  setLockSideEffects(fn: () => Promise<void>): void {
+    this.lockSideEffects = fn;
+  }
+
+  /**
+   * Register the auto-lock alarm handler. MUST be called synchronously at
+   * startup (MV3 event-page listener requirement).
+   */
+  attachAutoLock(): void {
+    const alarms = (browser as { alarms?: typeof browser.alarms }).alarms;
+    alarms?.onAlarm?.addListener((alarm) => {
+      if (alarm.name === VAULT_AUTOLOCK_ALARM) void this.autoLockNow();
+    });
+  }
+
+  private async autoLockNow(): Promise<void> {
+    if (!this.isUnlocked()) return;
+    this.lock();
+    if (this.lockSideEffects) {
+      await this.lockSideEffects().catch((err) =>
+        console.warn('[contabox] auto-lock side effects failed', err),
+      );
+    }
+    await this.syncUnlockedHint();
+  }
 
   setAutoLockMinutes(min: number): void {
     this.autoLockMinutes = Math.max(0, min);
@@ -206,23 +268,22 @@ export class Vault {
     if (Number.isFinite(v) && v >= 0) this.autoLockMinutes = v;
   }
 
+  private clearAutoLockAlarm(): void {
+    const alarms = (browser as { alarms?: typeof browser.alarms }).alarms;
+    void alarms?.clear?.(VAULT_AUTOLOCK_ALARM);
+  }
+
   /**
-   * Reset the inactivity countdown. Call after every command/UI interaction
-   * known to be initiated by the user.
+   * (Re)arm the auto-lock. Uses `browser.alarms` (absolute wall-clock) instead
+   * of setTimeout so it survives event-page suspension and OS sleep — a
+   * setTimeout pauses across sleep and would leave the vault unlocked past the
+   * configured window.
    */
   scheduleAutoLock(): void {
-    if (this.autoLockTimer) {
-      clearTimeout(this.autoLockTimer);
-      this.autoLockTimer = null;
-    }
+    this.clearAutoLockAlarm();
     if (!this.isUnlocked() || this.autoLockMinutes <= 0) return;
-    this.autoLockTimer = setTimeout(
-      () => {
-        this.lock();
-        void this.syncUnlockedHint();
-      },
-      this.autoLockMinutes * 60 * 1000,
-    );
+    const alarms = (browser as { alarms?: typeof browser.alarms }).alarms;
+    alarms?.create?.(VAULT_AUTOLOCK_ALARM, { delayInMinutes: this.autoLockMinutes });
   }
 
   /* ---------- master password change ---------- */

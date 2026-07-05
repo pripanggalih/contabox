@@ -50,18 +50,19 @@ export class ContaboxDB extends Dexie {
       meta: 'key',
     });
 
-    // v2 — M7. Adds container PIN, autoSnapshot/retention indices, proxy
-    // failure counters, snapshot IDB opt-in. Schema is additive (no field
-    // removals) so a v1→v2 upgrade is non-destructive; Dexie auto-handles
-    // missing columns as undefined on read.
+    // v2 — M7. Adds container PIN, proxy failure counters, snapshot IDB opt-in.
+    // Schema is additive (no field removals) so a v1→v2 upgrade is
+    // non-destructive; Dexie auto-handles missing columns as undefined on read.
+    // NOTE: the `autoSnapshot`/`disabled` boolean indexes declared here are
+    // dead — IndexedDB cannot index boolean values, so `.where(...)` over them
+    // matches nothing. They are dropped in v3. Never query these; scan instead.
     this.version(2)
       .stores({
         containers: 'cookieStoreId, workspaceId, templateId, order, lastUsedAt, autoSnapshot',
         proxies: 'id, poolId, lastHealthStatus, disabled',
       })
       .upgrade(async (tx) => {
-        // Backfill new boolean fields on existing rows so .where('autoSnapshot')
-        // queries don't need IS NULL handling.
+        // Backfill new fields on existing rows so reads see defined values.
         await tx
           .table<{ autoSnapshot?: boolean; snapshotIncludeIdb?: boolean }>('containers')
           .toCollection()
@@ -77,6 +78,16 @@ export class ContaboxDB extends Dexie {
             p.consecutiveFails ??= 0;
           });
       });
+
+    // v3 — drop the non-functional boolean indexes (`containers.autoSnapshot`,
+    // `proxies.disabled`, `rules.enabled`). Removing a secondary index touches
+    // no row data; the columns themselves are retained. Forward-only + additive
+    // in spirit: nothing a user stored is lost.
+    this.version(3).stores({
+      containers: 'cookieStoreId, workspaceId, templateId, order, lastUsedAt',
+      proxies: 'id, poolId, lastHealthStatus',
+      rules: 'id, order, containerId',
+    });
   }
 }
 

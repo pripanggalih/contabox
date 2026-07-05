@@ -36,10 +36,25 @@ const oldVersion = pkg.version;
 
 let next;
 if (arg === 'patch' || arg === 'minor' || arg === 'major') {
-  const [maj, min, pat] = oldVersion.split('.').map((n) => Number(n));
-  if (arg === 'patch') next = `${maj}.${min}.${pat + 1}`;
-  if (arg === 'minor') next = `${maj}.${min + 1}.0`;
-  if (arg === 'major') next = `${maj + 1}.0.0`;
+  const segs = oldVersion.split('.').map((n) => Number(n));
+  if (segs.some((n) => !Number.isInteger(n))) {
+    console.error(`Cannot bump: current version "${oldVersion}" is not dotted numeric.`);
+    process.exit(1);
+  }
+  // Segment-aware so 4-segment beta versions (e.g. 0.2.0.1) don't lose their
+  // last segment: patch increments the LAST segment; minor/major zero the tail.
+  if (arg === 'patch') {
+    segs[segs.length - 1] += 1;
+  } else if (arg === 'minor') {
+    if (segs.length < 2) segs.push(0);
+    segs[1] += 1;
+    for (let i = 2; i < segs.length; i++) segs[i] = 0;
+  } else {
+    segs[0] += 1;
+    for (let i = 1; i < segs.length; i++) segs[i] = 0;
+    if (segs.length < 3) while (segs.length < 3) segs.push(0);
+  }
+  next = segs.join('.');
 } else {
   next = arg;
 }

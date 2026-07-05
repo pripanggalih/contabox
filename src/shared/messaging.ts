@@ -144,6 +144,7 @@ export type Command =
         kind: 'password' | 'totp' | 'note' | 'proxy-credential';
         label: string;
         secret: string;
+        totp?: { period: number; digits: number; algorithm: 'SHA-1' | 'SHA-256' | 'SHA-512' };
       };
     }
   | { type: 'vault.listEntries' }

@@ -17,12 +17,22 @@ import {
   autoRuleInputSchema,
   bulkCreateInputSchema,
   bulkOpenUrlInputSchema,
+  cookieSchema,
   createContainerInputSchema,
+  fingerprintProfileInputSchema,
+  fingerprintProfilePatchSchema,
+  idListSchema,
+  metaSetSchema,
   proxyImportLineSchema,
   proxyInputSchema,
   proxyPoolInputSchema,
+  tagListSchema,
   templateInputSchema,
   updateContainerInputSchema,
+  vaultAddEntrySchema,
+  vaultChangePasswordSchema,
+  vaultExportSchema,
+  vaultPasswordSchema,
   workspaceInputSchema,
 } from '@shared/schemas';
 import { totp } from '@shared/totp';
@@ -53,6 +63,28 @@ interface MessageSender {
   tab?: { id?: number; cookieStoreId?: string; url?: string };
   url?: string;
   origin?: string;
+}
+
+/**
+ * Commands a content script is allowed to invoke. Everything else — vault
+ * reads, backup export, container mutation, cookie writes — is reachable only
+ * from the extension's own pages (sidebar/popup/options). Without this gate a
+ * compromised page-process content script could drain the whole vault
+ * (confused-deputy). See SECURITY.md T1.
+ */
+const CONTENT_SCRIPT_COMMANDS = new Set<CommandType>(['autofill.match', 'autofill.getSecret']);
+
+/**
+ * True when the message came from one of the extension's OWN pages. We can't
+ * key off `sender.tab` because the options page runs in a real tab
+ * (`open_in_tab: true`), so it too carries `sender.tab`. The reliable
+ * discriminator is the sender URL's origin: extension pages are
+ * `moz-extension://<uuid>/…`; content scripts report the host page's URL.
+ */
+function isExtensionSender(sender: MessageSender): boolean {
+  const extOrigin = browser.runtime.getURL('');
+  const url = sender.url ?? sender.tab?.url;
+  return typeof url === 'string' && url.startsWith(extOrigin);
 }
 
 export class CommandRouter {
@@ -124,48 +156,63 @@ export class CommandRouter {
       return r;
     });
     this.add('container.bulkDelete', async (cmd) => {
-      const r = await containerManager.bulkDelete(cmd.payload.ids);
+      const r = await containerManager.bulkDelete(idListSchema.parse(cmd.payload.ids));
       void broadcast({ type: 'state.containers' });
       return r;
     });
     this.add('container.bulkSetLocked', async (cmd) => {
-      const r = await containerManager.bulkSetLocked(cmd.payload.ids, cmd.payload.locked);
+      const r = await containerManager.bulkSetLocked(
+        idListSchema.parse(cmd.payload.ids),
+        cmd.payload.locked,
+      );
       void broadcast({ type: 'state.containers' });
       return r;
     });
     this.add('container.bulkSetWorkspace', async (cmd) => {
-      const r = await containerManager.bulkSetWorkspace(cmd.payload.ids, cmd.payload.workspaceId);
+      const r = await containerManager.bulkSetWorkspace(
+        idListSchema.parse(cmd.payload.ids),
+        cmd.payload.workspaceId,
+      );
       void broadcast({ type: 'state.containers' });
       return r;
     });
     this.add('container.bulkAddTags', async (cmd) => {
-      const r = await containerManager.bulkAddTags(cmd.payload.ids, cmd.payload.tags);
+      const r = await containerManager.bulkAddTags(
+        idListSchema.parse(cmd.payload.ids),
+        tagListSchema.parse(cmd.payload.tags),
+      );
       void broadcast({ type: 'state.containers' });
       return r;
     });
     this.add('container.bulkRemoveTags', async (cmd) => {
-      const r = await containerManager.bulkRemoveTags(cmd.payload.ids, cmd.payload.tags);
+      const r = await containerManager.bulkRemoveTags(
+        idListSchema.parse(cmd.payload.ids),
+        tagListSchema.parse(cmd.payload.tags),
+      );
       void broadcast({ type: 'state.containers' });
       return r;
     });
     this.add('container.bulkSetProxy', async (cmd) => {
-      const r = await containerManager.bulkSetProxy(cmd.payload.ids, cmd.payload.proxyId);
+      const r = await containerManager.bulkSetProxy(
+        idListSchema.parse(cmd.payload.ids),
+        cmd.payload.proxyId,
+      );
       void broadcast({ type: 'state.containers' });
       return r;
     });
     this.add('container.bulkSetFingerprint', async (cmd) => {
       const r = await containerManager.bulkSetFingerprint(
-        cmd.payload.ids,
+        idListSchema.parse(cmd.payload.ids),
         cmd.payload.fingerprintId,
       );
       void broadcast({ type: 'state.containers' });
       return r;
     });
     this.add('container.bulkHibernate', async (cmd) =>
-      containerManager.bulkHibernate(cmd.payload.ids),
+      containerManager.bulkHibernate(idListSchema.parse(cmd.payload.ids)),
     );
     this.add('container.bulkOpenDefault', async (cmd) =>
-      containerManager.bulkOpenDefault(cmd.payload.ids, {
+      containerManager.bulkOpenDefault(idListSchema.parse(cmd.payload.ids), {
         newWindow: cmd.payload.newWindow,
         staggerMs: cmd.payload.staggerMs,
       }),
@@ -225,8 +272,11 @@ export class CommandRouter {
       return row?.value ?? null;
     });
     this.add('meta.set', async (cmd) => {
-      await getDb().meta.put({ key: cmd.payload.key, value: cmd.payload.value });
-      return { key: cmd.payload.key };
+      // Reject writes to protected namespaces (vault.* / lock.*) and cap size —
+      // otherwise a caller could overwrite `vault.verifier` and brick the vault.
+      const { key, value } = metaSetSchema.parse(cmd.payload);
+      await getDb().meta.put({ key, value });
+      return { key };
     });
 
     // MAC migration
@@ -288,13 +338,19 @@ export class CommandRouter {
     // Vault
     this.add('vault.status', async () => vault.status());
     this.add('vault.initialize', async (cmd) => {
-      await vault.initialize(cmd.payload.password);
+      const { password } = vaultPasswordSchema.parse(cmd.payload);
+      await vault.initialize(password);
       await vault.syncUnlockedHint();
       void broadcast({ type: 'state.vault' });
       return { ok: true as const };
     });
     this.add('vault.unlock', async (cmd) => {
-      await vault.unlock(cmd.payload.password);
+      const { password } = vaultPasswordSchema.parse(cmd.payload);
+      await vault.unlock(password);
+      // Proxy passwords couldn't be materialized while locked and were cached
+      // credential-less (up to STICKY_TTL_MS). Invalidate so authenticated
+      // proxies pick up their secrets now.
+      proxyEngine.invalidate();
       await vault.syncUnlockedHint();
       void broadcast({ type: 'state.vault' });
       return { ok: true as const };
@@ -309,13 +365,17 @@ export class CommandRouter {
       return { ok: true as const };
     });
     this.add('vault.changeMasterPassword', async (cmd) => {
-      await vault.changeMasterPassword(cmd.payload.newPassword);
+      const { newPassword } = vaultChangePasswordSchema.parse(cmd.payload);
+      await vault.changeMasterPassword(newPassword);
       void broadcast({ type: 'state.vault' });
       return { ok: true as const };
     });
     this.add('vault.export', async () => vault.export());
     this.add('vault.import', async (cmd) => {
-      const r = await vault.import(cmd.payload.envelope as VaultExport, cmd.payload.password);
+      // Validate the untrusted envelope shape BEFORE it touches the DB — a
+      // malformed row set could otherwise brick vault reads.
+      const envelope = vaultExportSchema.parse(cmd.payload.envelope) as VaultExport;
+      const r = await vault.import(envelope, cmd.payload.password);
       void broadcast({ type: 'state.vault' });
       return r;
     });
@@ -323,7 +383,8 @@ export class CommandRouter {
     // Fingerprint
     this.add('fingerprint.list', async () => fingerprintManager.list());
     this.add('fingerprint.createCustom', async (cmd) => {
-      const fp = await fingerprintManager.createCustom(cmd.payload);
+      const input = fingerprintProfileInputSchema.parse(cmd.payload);
+      const fp = await fingerprintManager.createCustom(input);
       void broadcast({ type: 'state.fingerprints' });
       await webRtcEngine.apply();
       return fp;
@@ -335,7 +396,8 @@ export class CommandRouter {
     });
     this.add('fingerprint.update', async (cmd) => {
       const { id, ...patch } = cmd.payload;
-      const fp = await fingerprintManager.update(id, patch);
+      const validPatch = fingerprintProfilePatchSchema.parse(patch);
+      const fp = await fingerprintManager.update(id, validPatch);
       void broadcast({ type: 'state.fingerprints' });
       await webRtcEngine.apply();
       return fp;
@@ -373,7 +435,8 @@ export class CommandRouter {
       cookieManager.list(cmd.payload.storeId, cmd.payload.url),
     );
     this.add('cookie.set', async (cmd) => {
-      await cookieManager.set(cmd.payload.storeId, cmd.payload.cookie);
+      const cookie = cookieSchema.parse(cmd.payload.cookie);
+      await cookieManager.set(cmd.payload.storeId, cookie);
       return { ok: true as const };
     });
     this.add('cookie.remove', async (cmd) => {
@@ -433,7 +496,8 @@ export class CommandRouter {
     // Vault entries (M7)
     this.add('vault.listEntries', async () => vault.list());
     this.add('vault.addEntry', async (cmd) => {
-      const id = await vault.addEntry(cmd.payload);
+      const input = vaultAddEntrySchema.parse(cmd.payload);
+      const id = await vault.addEntry(input);
       void broadcast({ type: 'state.vault' });
       return { id };
     });
@@ -447,8 +511,7 @@ export class CommandRouter {
       return { secret };
     });
     this.add('vault.totpCode', async (cmd) => {
-      const secret = await vault.getSecret(cmd.payload.id);
-      const code = await totp(secret);
+      const code = await vault.totpFor(cmd.payload.id);
       return { code };
     });
     this.add('vault.setAutoLock', async (cmd) => {
@@ -484,32 +547,33 @@ export class CommandRouter {
       };
     });
 
-    // Autofill (called by content script)
-    this.add('autofill.match', async (cmd, sender) => {
+    // Autofill (called by content script). The origin is taken from the
+    // browser-attested `sender.tab.url`, NEVER the content-script-supplied
+    // payload — otherwise a script on evil.com could ask for bank.com creds.
+    this.add('autofill.match', async (_cmd, sender) => {
       const cookieStoreId = sender.tab?.cookieStoreId ?? null;
-      if (!cookieStoreId) return [];
+      const origin = tabOrigin(sender);
+      if (!cookieStoreId || !origin) return [];
       // Honor lock: a locked-but-not-unlocked container reveals nothing.
       const ext = await getDb().containers.get(cookieStoreId);
       if (lockManager.isEffectivelyLocked(ext)) return [];
-      return autofillResolver.match(cookieStoreId, cmd.payload.origin);
+      return autofillResolver.match(cookieStoreId, origin);
     });
     this.add('autofill.getSecret', async (cmd, sender) => {
       const cookieStoreId = sender.tab?.cookieStoreId ?? '';
-      if (!cookieStoreId) throw new Error('not a tab request');
+      const origin = tabOrigin(sender);
+      if (!cookieStoreId || !origin) throw new Error('not a tab request');
       const ext = await getDb().containers.get(cookieStoreId);
       if (lockManager.isEffectivelyLocked(ext)) throw new Error('container is locked');
-      const r = await autofillResolver.getSecretFor(
-        cmd.payload.id,
-        cookieStoreId,
-        cmd.payload.origin,
-      );
+      const r = await autofillResolver.getSecretFor(cmd.payload.id, cookieStoreId, origin);
       // For TOTP we generate the current code so the script never sees the
-      // long-term shared secret.
+      // long-term shared secret. Use the entry's stored params (period/digits/
+      // algorithm) so non-default issuers produce correct codes.
       if (r.kind === 'totp') {
-        const code = await totp(r.secret);
+        const code = await totp(r.secret, r.totp ?? {});
         return { secret: code, kind: r.kind };
       }
-      return r;
+      return { secret: r.secret, kind: r.kind };
     });
 
     // Proxy scheduling + enable/disable
@@ -576,6 +640,16 @@ export class CommandRouter {
   }
 
   private async dispatch(cmd: Command, sender: MessageSender): Promise<CommandResult<CommandType>> {
+    // Confused-deputy gate: only the extension's own pages may invoke
+    // privileged commands. Non-extension senders (content scripts) are limited
+    // to the autofill allowlist.
+    if (!isExtensionSender(sender) && !CONTENT_SCRIPT_COMMANDS.has(cmd.type)) {
+      return {
+        ok: false,
+        error: 'command not available to content scripts',
+        code: 'PERMISSION_DENIED',
+      };
+    }
     const handler = this.handlers.get(cmd.type);
     if (!handler) {
       return { ok: false, error: `unknown command: ${cmd.type}`, code: 'INVALID_INPUT' };
@@ -588,6 +662,17 @@ export class CommandRouter {
       console.error(`[contabox] ${cmd.type} failed:`, err);
       return { ok: false, error: message, code };
     }
+  }
+}
+
+/** Browser-attested origin of the sender tab, or null. */
+function tabOrigin(sender: MessageSender): string | null {
+  const url = sender.tab?.url;
+  if (!url) return null;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
   }
 }
 

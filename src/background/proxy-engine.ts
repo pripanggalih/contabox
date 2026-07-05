@@ -34,14 +34,34 @@ interface ResolvedProxy {
   proxyId: string;
 }
 
+/**
+ * Effective routing decision for a container:
+ *   - direct  → no proxy assigned; use the direct connection.
+ *   - proxy   → route through this proxy.
+ *   - blocked → a proxy IS assigned but currently unavailable and the container
+ *               is fail-closed; blackhole the request instead of leaking the
+ *               real IP over a direct connection.
+ */
+type Resolution =
+  | { kind: 'direct' }
+  | { kind: 'proxy'; proxy: ResolvedProxy }
+  | { kind: 'blocked' };
+
 interface CacheEntry {
-  resolved: ResolvedProxy | null;
+  resolution: Resolution;
   /** Used by sticky-per-session: when this expires, we re-resolve. */
   validUntil: number;
 }
 
 const STICKY_TTL_MS = 60 * 60 * 1000; // 1 hour
 const COOLDOWN_DEFAULT_S = 0;
+
+// Unroutable proxy used to fail a request CLOSED. Nothing listens on the
+// discard port (9) of loopback, so the connection is refused and the request
+// errors out instead of silently escaping to the direct connection.
+// ponytail: blackhole-via-dead-proxy; a dedicated webRequest kill switch would
+// be cleaner if we ever need per-request error pages.
+const BLACKHOLE = { type: 'http', host: '127.0.0.1', port: 9 } as const;
 
 export class ProxyEngine {
   private cache = new Map<string, CacheEntry>();
@@ -53,6 +73,13 @@ export class ProxyEngine {
   private attached = false;
   /** Single-attach guard for the alarms listener used by scheduled health. */
   private alarmListenerAttached = false;
+  /**
+   * Active health-probe override. While set, `handle` forces `info` for the
+   * exact `url` so the probe actually traverses the proxy under test (a bare
+   * BG `fetch` has no cookieStoreId and would otherwise go direct).
+   */
+  private probe: { url: string; info: ReturnType<typeof toProxyInfo> } | null = null;
+  private probeCounter = 0;
 
   attach(): void {
     if (this.attached) return;
@@ -66,6 +93,20 @@ export class ProxyEngine {
     (browser.proxy.onRequest as { addListener: Function }).addListener(this.handle, {
       urls: ['<all_urls>'],
     });
+    // MV3 event page: listeners must be registered synchronously in the first
+    // turn or a wake-up alarm can be missed. Register the scheduled-health
+    // listener here; ensureScheduled() only creates/clears the alarm itself.
+    const alarms = (browser as { alarms?: typeof browser.alarms }).alarms;
+    if (alarms?.onAlarm && !this.alarmListenerAttached) {
+      alarms.onAlarm.addListener((alarm) => {
+        if (alarm.name === SCHEDULED_HEALTH_ALARM) {
+          void this.runScheduledHealth().catch((err) =>
+            console.warn('[contabox] scheduled health failed', err),
+          );
+        }
+      });
+      this.alarmListenerAttached = true;
+    }
     this.attached = true;
   }
 
@@ -87,35 +128,59 @@ export class ProxyEngine {
    * Hot-path handler. Returns a `proxy.ProxyInfo` array (Firefox supports
    * fallback chains; we return one entry).
    */
-  private handle = async (req: { cookieStoreId?: string }) => {
+  private handle = async (req: { url?: string; cookieStoreId?: string }) => {
+    // Health-probe override — force the proxy under test for its exact URL.
+    if (this.probe && req.url === this.probe.url) return this.probe.info;
+
     if (typeof req.cookieStoreId !== 'string') return { type: 'direct' };
     const cookieStoreId = req.cookieStoreId;
 
     const cached = this.cache.get(cookieStoreId);
     if (cached && cached.validUntil > Date.now()) {
-      return cached.resolved ? toProxyInfo(cached.resolved) : { type: 'direct' };
+      return this.toInfo(cached.resolution);
     }
 
-    const resolved = await this.resolve(cookieStoreId);
-    const ttl = STICKY_TTL_MS;
-    this.cache.set(cookieStoreId, { resolved, validUntil: Date.now() + ttl });
-    return resolved ? toProxyInfo(resolved) : { type: 'direct' };
+    const resolution = await this.resolve(cookieStoreId);
+    this.cache.set(cookieStoreId, { resolution, validUntil: Date.now() + STICKY_TTL_MS });
+    return this.toInfo(resolution);
   };
 
-  /** Resolve the effective proxy for a container. Public for tests. */
-  async resolve(cookieStoreId: string): Promise<ResolvedProxy | null> {
-    const ext = (await getDb().containers.get(cookieStoreId)) as ContainerExt | undefined;
-    if (!ext) return null;
+  private toInfo(
+    r: Resolution,
+  ): ReturnType<typeof toProxyInfo> | typeof BLACKHOLE | { type: 'direct' } {
+    if (r.kind === 'proxy') return toProxyInfo(r.proxy);
+    if (r.kind === 'blocked') return BLACKHOLE;
+    return { type: 'direct' };
+  }
 
-    if (ext.proxyId) {
-      const proxy = await getDb().proxies.get(ext.proxyId);
-      if (!proxy) return null;
-      if (proxy.disabled) return null;
-      return this.materialize(proxy);
+  /**
+   * Resolve the effective routing for a container. Public for tests.
+   *
+   * Fails CLOSED: when a proxy is assigned but missing / disabled / errors,
+   * returns `blocked` (blackhole) rather than `direct`, unless the container
+   * opted out via `proxyFailClosed === false`.
+   */
+  async resolve(cookieStoreId: string): Promise<Resolution> {
+    let ext: ContainerExt | undefined;
+    try {
+      ext = (await getDb().containers.get(cookieStoreId)) as ContainerExt | undefined;
+    } catch (err) {
+      console.warn('[contabox] proxy resolve: container lookup failed', err);
+      // Unknown assignment state — safest is direct (we have no proxy to honor).
+      return { kind: 'direct' };
     }
+    if (!ext || !ext.proxyId) return { kind: 'direct' };
 
-    // Future: workspace fallback proxy chain. Skip for M4.
-    return null;
+    const failClosed = ext.proxyFailClosed !== false; // default on
+    const blockedOrDirect: Resolution = failClosed ? { kind: 'blocked' } : { kind: 'direct' };
+    try {
+      const proxy = await getDb().proxies.get(ext.proxyId);
+      if (!proxy || proxy.disabled) return blockedOrDirect;
+      return { kind: 'proxy', proxy: await this.materialize(proxy) };
+    } catch (err) {
+      console.warn('[contabox] proxy resolve failed', err);
+      return blockedOrDirect;
+    }
   }
 
   /** Pool-aware resolve (used when extending later milestones). */
@@ -188,12 +253,20 @@ export class ProxyEngine {
   ): Promise<{ ok: boolean; latencyMs?: number; ip?: string; error?: string; disabled?: boolean }> {
     const proxy = await getDb().proxies.get(proxyId);
     if (!proxy) return { ok: false, error: 'proxy not found' };
+
+    // Force this exact request through the proxy under test. A unique cache-
+    // buster keeps the URL from colliding with a real page request and prevents
+    // any cached response from masking a dead proxy.
+    const probeUrl = withCacheBuster(endpoint, ++this.probeCounter);
+    const info = toProxyInfo(await this.materialize(proxy));
+
     const started = Date.now();
     let ok = false;
     let ip: string | undefined;
     let error: string | undefined;
+    this.probe = { url: probeUrl, info };
     try {
-      const res = await fetch(endpoint, { credentials: 'omit' });
+      const res = await fetch(probeUrl, { credentials: 'omit', cache: 'no-store' });
       if (!res.ok) {
         error = `HTTP ${res.status}`;
       } else {
@@ -203,6 +276,8 @@ export class ProxyEngine {
       }
     } catch (err) {
       error = String(err);
+    } finally {
+      this.probe = null;
     }
 
     const latencyMs = Date.now() - started;
@@ -278,17 +353,8 @@ export class ProxyEngine {
     if (!Number.isFinite(minutes) || minutes <= 0) return;
 
     alarms.create(SCHEDULED_HEALTH_ALARM, { periodInMinutes: minutes });
-
-    if (!this.alarmListenerAttached) {
-      alarms.onAlarm?.addListener((alarm) => {
-        if (alarm.name === SCHEDULED_HEALTH_ALARM) {
-          void this.runScheduledHealth().catch((err) =>
-            console.warn('[contabox] scheduled health failed', err),
-          );
-        }
-      });
-      this.alarmListenerAttached = true;
-    }
+    // The onAlarm listener is registered synchronously in attach() — MV3 event
+    // pages require listeners in the first turn, not behind these awaits.
   }
 
   /** Probe every enabled proxy in serial. */
@@ -309,14 +375,35 @@ export class ProxyEngine {
 
 const SCHEDULED_HEALTH_ALARM = 'contabox.proxy.scheduledHealth';
 
+function withCacheBuster(endpoint: string, n: number): string {
+  try {
+    const u = new URL(endpoint);
+    u.searchParams.set('_cb', String(n));
+    return u.toString();
+  } catch {
+    return `${endpoint}${endpoint.includes('?') ? '&' : '?'}_cb=${n}`;
+  }
+}
+
 function toProxyInfo(p: ResolvedProxy) {
-  return {
+  const info: {
+    type: string;
+    host: string;
+    port: number;
+    username?: string;
+    password?: string;
+    proxyDNS?: boolean;
+  } = {
     type: p.type,
     host: p.host,
     port: p.port,
     username: p.username,
     password: p.password,
   };
+  // For SOCKS, resolve DNS at the proxy so hostnames don't leak to the local
+  // resolver (ISP). No effect on HTTP/HTTPS proxies.
+  if (p.type === 'socks4' || p.type === 'socks5') info.proxyDNS = true;
+  return info;
 }
 
 export const proxyEngine = new ProxyEngine();

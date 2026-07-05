@@ -41,6 +41,7 @@ import {
 } from '@shared/crypto';
 import { getDb } from '@shared/db';
 import { META_LOCK_SESSION, META_VAULT_SALT, META_VAULT_VERIFIER } from '@shared/meta-keys';
+import { backupBundleSchema, backupDataSchemaExport } from '@shared/schemas';
 import type {
   AutoRule,
   ContainerExt,
@@ -192,21 +193,34 @@ export class BackupManager {
    * @param password used only when bundle.encrypted === true
    */
   async import(bundle: unknown, password?: string): Promise<{ restored: number }> {
-    if (!isBundle(bundle)) throw new Error('invalid backup bundle');
-    if (bundle.version !== BACKUP_VERSION) {
-      throw new Error(`unsupported backup version: ${bundle.version}`);
+    // Validate the untrusted bundle shape BEFORE wiping and repopulating every
+    // table. A malformed/hostile bundle must not be able to write garbage rows
+    // (which would break reads or brick the vault via a bad `vault.salt` meta).
+    const parsed = backupBundleSchema.safeParse(bundle);
+    if (!parsed.success) throw new Error('invalid backup bundle');
+    const outer = parsed.data;
+    if (outer.version !== BACKUP_VERSION) {
+      throw new Error(`unsupported backup version: ${outer.version}`);
     }
 
     let data: BackupBundleData;
-    if (bundle.encrypted) {
+    if (outer.encrypted) {
       if (!password) throw new Error('password required for encrypted backup');
-      const salt = base64ToBytes(bundle.salt);
+      const salt = base64ToBytes(outer.salt);
       const key = await deriveKey(password, salt);
-      const plaintext = await decryptString(key, bundle.payload).catch(() => null);
+      const plaintext = await decryptString(key, outer.payload).catch(() => null);
       if (plaintext === null) throw new Error('wrong password for this backup');
-      data = JSON.parse(plaintext) as BackupBundleData;
+      let inner: unknown;
+      try {
+        inner = JSON.parse(plaintext);
+      } catch {
+        throw new Error('backup payload is not valid JSON');
+      }
+      const innerParsed = backupDataSchemaExport.safeParse(inner);
+      if (!innerParsed.success) throw new Error('backup payload failed validation');
+      data = innerParsed.data as unknown as BackupBundleData;
     } else {
-      data = bundle;
+      data = outer as unknown as BackupBundleData;
     }
 
     // Drop session-unlock if present (defensive — collect() already strips it).
@@ -272,12 +286,6 @@ export class BackupManager {
 
     return { restored };
   }
-}
-
-function isBundle(b: unknown): b is BackupBundle {
-  if (!b || typeof b !== 'object') return false;
-  const obj = b as Record<string, unknown>;
-  return obj.version === BACKUP_VERSION && typeof obj.encrypted === 'boolean';
 }
 
 export const backupManager = new BackupManager();

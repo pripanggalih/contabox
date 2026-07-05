@@ -28,6 +28,8 @@ import type {
   SnapshotOrigin,
 } from '@shared/types';
 import { now, uuid } from '@shared/utils';
+import { lockManager } from './lock-manager';
+import { vault } from './vault';
 
 interface CookieRow {
   name: string;
@@ -54,6 +56,9 @@ export class SnapshotEngine {
   }
 
   async capture(containerId: string, label: string): Promise<Snapshot> {
+    // Capturing opens tabs in the container and reads its cookies/storage —
+    // gate on the lock like every other cookie-handing path (cardinal rule #9).
+    await lockManager.assertOpenAllowed(containerId);
     const ext = await getDb().containers.get(containerId);
     const includeIdb = ext?.snapshotIncludeIdb === true;
 
@@ -107,24 +112,42 @@ export class SnapshotEngine {
       });
     }
 
-    const snapshot: Snapshot = {
-      id: uuid(),
-      containerId,
-      label,
-      createdAt: now(),
-      origins,
-      encrypted: false,
-    };
+    const base = { id: uuid(), containerId, label, createdAt: now() };
+    // Encrypt the body at rest whenever the vault is unlocked. Snapshot origins
+    // hold live auth cookies + storage — plaintext-at-rest is account-takeover
+    // material. When the vault is locked we cannot encrypt (no key); such
+    // snapshots stay plaintext.
+    // ponytail: locked-vault captures remain plaintext; re-encrypting them on
+    // next unlock would close that gap if it ever matters.
+    let snapshot: Snapshot;
+    if (vault.isUnlocked()) {
+      const enc = await vault.encrypt(JSON.stringify(origins));
+      snapshot = { ...base, origins: [], encrypted: true, cipher: enc.cipher, iv: enc.iv };
+    } else {
+      snapshot = { ...base, origins, encrypted: false };
+    }
     await getDb().snapshots.put(snapshot);
     return snapshot;
+  }
+
+  /** Decrypt (if needed) and return a snapshot's origins. */
+  private async loadOrigins(snap: Snapshot): Promise<SnapshotOrigin[]> {
+    if (!snap.encrypted) return snap.origins;
+    if (!snap.cipher || !snap.iv) return [];
+    if (!vault.isUnlocked()) throw new Error('vault is locked — unlock to read this snapshot');
+    const json = await vault.decrypt({ cipher: snap.cipher, iv: snap.iv });
+    return JSON.parse(json) as SnapshotOrigin[];
   }
 
   async restore(snapshotId: string): Promise<{ origins: number }> {
     const snap = await getDb().snapshots.get(snapshotId);
     if (!snap) throw new Error('snapshot not found');
+    // Writing cookies/storage into the container is a lock-gated operation.
+    await lockManager.assertOpenAllowed(snap.containerId);
+    const origins = await this.loadOrigins(snap);
     let count = 0;
 
-    for (const origin of snap.origins) {
+    for (const origin of origins) {
       // Clear existing cookies for this origin in this container.
       const existing = (await browser.cookies.getAll({
         storeId: snap.containerId,
@@ -182,7 +205,14 @@ export class SnapshotEngine {
       getDb().snapshots.get(afterId),
     ]);
     if (!before || !after) throw new Error('snapshot not found');
-    return diffSnapshots(before, after);
+    const [beforeOrigins, afterOrigins] = await Promise.all([
+      this.loadOrigins(before),
+      this.loadOrigins(after),
+    ]);
+    return diffSnapshots(
+      { ...before, origins: beforeOrigins },
+      { ...after, origins: afterOrigins },
+    );
   }
 
   private async captureStorage(
@@ -258,6 +288,12 @@ export class SnapshotEngine {
                 name: string;
                 keyPath: string | string[] | null;
                 autoIncrement: boolean;
+                indexes?: Array<{
+                  name: string;
+                  keyPath: string | string[];
+                  unique: boolean;
+                  multiEntry: boolean;
+                }>;
                 records: Array<{ key: unknown; value: unknown }>;
               }>;
             }> = [];
@@ -299,10 +335,30 @@ export class SnapshotEngine {
                         cursorReq.onerror = () => resolve(out);
                       },
                     );
+                    const indexes: Array<{
+                      name: string;
+                      keyPath: string | string[];
+                      unique: boolean;
+                      multiEntry: boolean;
+                    }> = [];
+                    for (const idxName of Array.from(store.indexNames)) {
+                      try {
+                        const idx = store.index(idxName);
+                        indexes.push({
+                          name: idxName,
+                          keyPath: idx.keyPath as string | string[],
+                          unique: idx.unique,
+                          multiEntry: idx.multiEntry,
+                        });
+                      } catch (e) {
+                        void e;
+                      }
+                    }
                     stores.push({
                       name: storeName,
                       keyPath: store.keyPath as string | string[] | null,
                       autoIncrement: store.autoIncrement,
+                      indexes,
                       records,
                     });
                   } catch (err) {
@@ -407,10 +463,20 @@ export class SnapshotEngine {
                     const upgrading = req.result;
                     for (const s of dump.stores) {
                       try {
-                        upgrading.createObjectStore(s.name, {
+                        const os = upgrading.createObjectStore(s.name, {
                           keyPath: s.keyPath ?? undefined,
                           autoIncrement: s.autoIncrement,
                         });
+                        for (const idx of s.indexes ?? []) {
+                          try {
+                            os.createIndex(idx.name, idx.keyPath, {
+                              unique: idx.unique,
+                              multiEntry: idx.multiEntry,
+                            });
+                          } catch (e) {
+                            void e;
+                          }
+                        }
                       } catch (err) {
                         void err;
                       }
