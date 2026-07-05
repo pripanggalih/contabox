@@ -112,9 +112,10 @@ back (so applying a sync doesn't immediately re-mark the data dirty).
 
 ### New meta keys
 
-- `sync.driveToken` — Google refresh token, **encrypted at rest** under the
-  vault key (never stored plaintext).
-- `sync.fileId` — Drive file id of the blob.
+- `sync.fileId` — Drive file id of the blob. Its presence = "connected". v1 does
+  **not** persist an OAuth token: each sync re-runs `launchWebAuthFlow`, which
+  returns a fresh short-lived access token (no long-lived credential stored). A
+  refresh-token exchange is a later upgrade if re-consent proves annoying.
 - `sync.lastRevision` — Drive `revisionId`/`headRevisionId` of the last blob this
   device successfully synced, to detect remote changes.
 - `sync.base` — the last-synced merged bundle (JSON), the common ancestor for the
@@ -244,7 +245,10 @@ vault is locked or Drive is not connected.
 - Sync requires the vault unlocked; the button is disabled when locked. Every
   path respects `lock-manager` / `isEffectivelyLocked` — no cookie restore while
   locked.
-- Drive refresh token stored encrypted under the vault key, never plaintext.
+- No long-lived Drive credential is stored in v1 — each sync re-runs the
+  interactive OAuth flow for a fresh short-lived access token (kept in memory
+  only). A future refresh-token flow would store the token encrypted under the
+  vault key.
 - Manifest additions: `identity` permission, host permission
   `https://www.googleapis.com/*`, and a Google OAuth client id (registered once
   by the maintainer in Google Cloud Console). No `eval` / remote code — AMO safe.
