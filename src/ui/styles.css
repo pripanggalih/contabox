@@ -25,9 +25,11 @@
 }
 
 /* Dark scheme overrides — flat custom-property reassignment.
- * Tailwind v4's @theme is top-level only and cannot be nested in @media. */
+ * Tailwind v4's @theme is top-level only and cannot be nested in @media.
+ * Applies when OS is dark (unless user forced light) OR user forced dark.
+ * data-theme is set by @ui/theme. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --color-bg-primary: hsl(0 0% 11%);
     --color-bg-elevated: hsl(0 0% 14%);
     --color-bg-hover: hsl(0 0% 18%);
@@ -37,6 +39,16 @@
     --color-accent: hsl(212 100% 60%);
     --color-accent-hover: hsl(212 100% 65%);
   }
+}
+:root[data-theme="dark"] {
+  --color-bg-primary: hsl(0 0% 11%);
+  --color-bg-elevated: hsl(0 0% 14%);
+  --color-bg-hover: hsl(0 0% 18%);
+  --color-border: hsl(0 0% 22%);
+  --color-text-primary: hsl(0 0% 95%);
+  --color-text-muted: hsl(0 0% 60%);
+  --color-accent: hsl(212 100% 60%);
+  --color-accent-hover: hsl(212 100% 65%);
 }
 
 html,

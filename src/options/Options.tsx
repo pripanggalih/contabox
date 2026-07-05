@@ -1,4 +1,5 @@
 import { onBroadcast } from '@shared/messaging';
+import { getTheme, setTheme, type Theme } from '@ui/theme';
 import { useEffect, useState } from 'react';
 import { AutoRulesPanel } from './components/AutoRulesPanel';
 import { FingerprintPanel } from './components/FingerprintPanel';
@@ -35,7 +36,9 @@ export function Options() {
   return (
     <div className="mx-auto max-w-3xl p-6">
       <h1 className="mb-1 text-2xl font-semibold">Contabox</h1>
-      <p className="mb-6 text-sm text-[var(--color-text-muted)]">Settings — version 0.1.0</p>
+      <p className="mb-6 text-sm text-[var(--color-text-muted)]">
+        Settings — version {browser.runtime.getManifest().version}
+      </p>
 
       <nav
         role="tablist"
@@ -82,22 +85,49 @@ export function Options() {
   );
 }
 
+const THEMES: { value: Theme; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 function GeneralPanel() {
+  const [theme, setThemeState] = useState<Theme>(getTheme());
+
+  function pick(t: Theme) {
+    setThemeState(t);
+    setTheme(t);
+  }
+
   return (
     <section className="space-y-4">
       <div className="rounded-lg border border-[var(--color-border)] p-4">
-        <h2 className="mb-2 text-base font-medium">Status</h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
-          You are running Contabox <strong>0.1.0</strong> (M7 — Vault, Autofill, TOTP, Container
-          lock).
-        </p>
+        <h2 className="mb-2 text-base font-medium">Appearance</h2>
+        <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-1.5">
+          {THEMES.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              role="radio"
+              aria-checked={theme === t.value}
+              onClick={() => pick(t.value)}
+              className={`rounded-md border px-2 py-1.5 text-sm ${
+                theme === t.value
+                  ? 'border-[var(--color-accent)] bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)]'
+                  : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="rounded-lg border border-[var(--color-border)] p-4">
-        <h2 className="mb-2 text-base font-medium">Roadmap</h2>
-        <ul className="list-inside list-disc space-y-1 text-sm">
-          <li>M8 — Public beta on AMO (perf + a11y + security audit)</li>
-          <li>Post-beta — Activity log, bandwidth analytics, sync, profile farm</li>
-        </ul>
+        <h2 className="mb-2 text-base font-medium">About</h2>
+        <p className="text-sm text-[var(--color-text-muted)]">
+          Contabox <strong>{browser.runtime.getManifest().version}</strong> — local-first container
+          manager with proxy, fingerprint, and encrypted vault.
+        </p>
       </div>
     </section>
   );
