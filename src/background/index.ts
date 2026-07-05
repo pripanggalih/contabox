@@ -86,39 +86,14 @@ browser.runtime.onStartup.addListener(() => {
   console.info('[contabox] onStartup');
 });
 
-// Shortcut → broadcast to UI surfaces. Sidebar listens and opens the palette.
+// Keyboard command handler. _execute_sidebar_action is handled natively.
 browser.commands.onCommand.addListener(async (name) => {
-  switch (name) {
-    case 'open-palette':
-      await dispatchUiEvent({ type: 'ui.openPalette' });
-      break;
-    case 'new-container':
-      await dispatchUiEvent({ type: 'ui.newContainer' });
-      break;
-    case 'lock-all':
-      try {
-        const r = await containerManager.lockAll();
-        await lockManager.relockAll();
-        await dispatchUiEvent({ type: 'ui.lockAll' });
-        console.info('[contabox] lockAll:', r.count);
-      } catch (err) {
-        console.warn('[contabox] lockAll failed', err);
-      }
-      break;
-    default:
-      // _execute_sidebar_action handled natively
-      break;
+  if (name !== 'lock-all') return;
+  try {
+    const r = await containerManager.lockAll();
+    await lockManager.relockAll();
+    console.info('[contabox] lockAll:', r.count);
+  } catch (err) {
+    console.warn('[contabox] lockAll failed', err);
   }
 });
-
-interface UiEvent {
-  type: 'ui.openPalette' | 'ui.newContainer' | 'ui.lockAll';
-}
-
-async function dispatchUiEvent(event: UiEvent): Promise<void> {
-  try {
-    await browser.runtime.sendMessage({ __ui: true, ...event });
-  } catch {
-    /* no listeners — fine */
-  }
-}

@@ -46,23 +46,7 @@ export function App() {
     return off;
   }, [refresh]);
 
-  // Listen for BG-dispatched UI events (keyboard shortcuts).
-  useEffect(() => {
-    function listener(msg: unknown) {
-      if (msg && typeof msg === 'object' && (msg as Record<string, unknown>).__ui === true) {
-        const event = msg as { type: string };
-        if (event.type === 'ui.openPalette') setShowPalette(true);
-      }
-      return undefined;
-    }
-    if (typeof browser !== 'undefined') {
-      browser.runtime.onMessage.addListener(listener);
-      return () => browser.runtime.onMessage.removeListener(listener);
-    }
-    return undefined;
-  }, []);
-
-  // Cmd/Ctrl+K opens palette inside sidebar even without BG dispatch.
+  // Cmd/Ctrl+K opens palette inside sidebar.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {

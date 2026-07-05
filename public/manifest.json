@@ -76,19 +76,6 @@
       },
       "description": "Toggle Contabox sidebar"
     },
-    "open-palette": {
-      "suggested_key": {
-        "default": "Ctrl+K",
-        "mac": "Command+K"
-      },
-      "description": "Open command palette"
-    },
-    "new-container": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+C"
-      },
-      "description": "Create new container"
-    },
     "lock-all": {
       "suggested_key": {
         "default": "Ctrl+Shift+L"
