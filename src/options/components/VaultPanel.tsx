@@ -1,5 +1,5 @@
 import { invoke } from '@shared/messaging';
-import { Download, Lock, Unlock, Upload } from 'lucide-react';
+import { Download, Lock, Unlock } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useOptionsStore } from '../state/store';
 
@@ -289,16 +289,13 @@ export function VaultPanel() {
               <Download className="h-3.5 w-3.5" />
               Export vault
             </button>
-            <label className="flex items-center gap-1.5 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm hover:bg-[var(--color-bg-hover)]">
-              <Upload className="h-3.5 w-3.5" />
-              Import vault
-              <input
-                type="file"
-                accept="application/json,.json"
-                onChange={(e) => void onPickFile(e)}
-                className="hidden"
-              />
-            </label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => void onPickFile(e)}
+              className="text-sm"
+            />
           </div>
 
           {showChange ? (
