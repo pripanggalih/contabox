@@ -1,10 +1,18 @@
 /**
  * FingerprintEngine — orchestrates fingerprint spoofing.
  *
- * Two surfaces:
- *   1. JS APIs in the page world — overridden via `scripting.executeScript`
- *      with `world: 'MAIN'`, triggered on `tabs.onUpdated` for tabs whose
- *      cookieStoreId has an assigned profile.
+ * Two surfaces, kept consistent so a site never sees a spoofed header next to a
+ * real JS value (the classic detectable mismatch):
+ *
+ *   1. JS APIs in the page world — the spoof runs at the VERY START of the
+ *      document, before any page script, by injecting an inline `<script>` into
+ *      the HTML response stream via `webRequest.filterResponseData`. The profile
+ *      is embedded in that script, so there is NO async round-trip and NO race
+ *      (unlike `scripting.executeScript`, which can lose to inline page scripts).
+ *      Because the inline script would otherwise be blocked by a strict page CSP,
+ *      we add a per-response nonce to the CSP's `script-src` (we EXTEND the
+ *      policy for our one script — we never strip the page's protections).
+ *      Runtimes without stream filtering fall back to the executeScript hook.
  *   2. HTTP headers (`User-Agent`, `Accept-Language`) — rewritten via
  *      `webRequest.onBeforeSendHeaders` keyed on cookieStoreId.
  *
@@ -17,17 +25,22 @@ import { FINGERPRINT_PRESETS, presetByKey, randomizeFromPreset } from '@shared/f
 import type { FingerprintProfile } from '@shared/types';
 import { now, uuid } from '@shared/utils';
 
+/** Max bytes we buffer while hunting for the HTML injection point before giving
+ *  up and streaming the response through untouched. */
+const MAX_SCAN_BYTES = 256 * 1024;
+const EMPTY_BYTES = new Uint8Array(0);
+
 export class FingerprintEngine {
   private attached = false;
   private routing = new Map<string, FingerprintProfile>();
 
   async attach(): Promise<void> {
     if (this.attached) return;
-    // Register the tab hook + header-rewrite listeners FIRST (synchronously).
-    // MV3 event pages must add listeners in the first turn; doing it after the
-    // awaits below risks missing the navigation that woke the worker. Until
-    // `refresh()` fills the routing map, both handlers simply no-op (safe).
-    this.attachTabHook();
+    // Register listeners FIRST (synchronously). MV3 event pages must add
+    // listeners in the first turn; doing it after the awaits below risks missing
+    // the navigation that woke the worker. Until `refresh()` fills the routing
+    // map, every handler simply no-ops (safe).
+    this.attachInjector();
     this.attachHeaderRewrite();
     this.attached = true;
     await this.seedDefaultsIfEmpty();
@@ -85,6 +98,85 @@ export class FingerprintEngine {
       }
     });
   }
+
+  /**
+   * Prefer stream-filter injection (race-free, per-container). Fall back to the
+   * executeScript tab hook only when `filterResponseData` is unavailable.
+   */
+  private attachInjector(): void {
+    const wr = (browser as unknown as { webRequest?: WebRequestLike }).webRequest;
+    if (wr?.onHeadersReceived?.addListener && typeof wr.filterResponseData === 'function') {
+      wr.onHeadersReceived.addListener(
+        this.onHeadersInject as never,
+        { urls: ['<all_urls>'], types: ['main_frame', 'sub_frame'] as never },
+        ['blocking', 'responseHeaders'] as never,
+      );
+    } else {
+      this.attachTabHook();
+    }
+  }
+
+  /**
+   * onHeadersReceived handler: for HTML responses in a spoofed container, add a
+   * nonce to the CSP and stream-inject an inline spoof `<script>` at the top of
+   * the document so it runs before any page script.
+   */
+  private onHeadersInject = (details: {
+    requestId: string;
+    cookieStoreId?: string;
+    responseHeaders?: Array<{ name: string; value?: string }>;
+  }): { responseHeaders?: Array<{ name: string; value?: string }> } => {
+    const profile = details.cookieStoreId ? this.routing.get(details.cookieStoreId) : undefined;
+    if (!profile) return {};
+    const headers = details.responseHeaders ?? [];
+    const contentType = headers.find((h) => h.name.toLowerCase() === 'content-type')?.value ?? '';
+    if (!/^\s*text\/html\b/i.test(contentType)) return {};
+
+    const wr = (browser as unknown as { webRequest?: WebRequestLike }).webRequest;
+    const filterFactory = wr?.filterResponseData;
+    if (!filterFactory) return {};
+
+    const nonce = makeNonce();
+    const scriptBytes = buildInjectedScript(profile, nonce);
+    const filter = filterFactory(details.requestId);
+    let buffer: Uint8Array = EMPTY_BYTES;
+    let done = false;
+
+    filter.ondata = (event: { data: ArrayBuffer }) => {
+      const chunk = new Uint8Array(event.data);
+      if (done) {
+        filter.write(chunk);
+        return;
+      }
+      buffer = concatBytes(buffer, chunk);
+      const off = findInsertionOffset(buffer);
+      if (off >= 0) {
+        filter.write(buffer.subarray(0, off));
+        filter.write(scriptBytes);
+        filter.write(buffer.subarray(off));
+        done = true;
+        buffer = EMPTY_BYTES;
+      } else if (buffer.length > MAX_SCAN_BYTES) {
+        // No injection point found — stream the response through unmodified.
+        filter.write(buffer);
+        done = true;
+        buffer = EMPTY_BYTES;
+      }
+    };
+    filter.onstop = () => {
+      if (!done && buffer.length) filter.write(buffer);
+      try {
+        filter.close();
+      } catch {
+        /* already closed */
+      }
+    };
+    filter.onerror = () => {
+      /* upstream error — nothing to flush */
+    };
+
+    return { responseHeaders: addNonceToCsp(headers, nonce) };
+  };
 
   private attachHeaderRewrite(): void {
     const wr = (browser as { webRequest?: typeof browser.webRequest }).webRequest;
@@ -158,14 +250,142 @@ function serializeProfile(p: FingerprintProfile): SerializedProfile {
   };
 }
 
+/** Minimal shape of Firefox's `nsIStreamFilter` (webRequest.filterResponseData). */
+interface StreamFilter {
+  ondata: (event: { data: ArrayBuffer }) => void;
+  onstop: () => void;
+  onerror: () => void;
+  write: (data: ArrayBuffer | Uint8Array) => void;
+  close: () => void;
+  disconnect: () => void;
+}
+
+/** The slice of `browser.webRequest` we touch (Firefox-only stream filtering). */
+interface WebRequestLike {
+  onHeadersReceived?: { addListener: Function };
+  filterResponseData?: (requestId: string) => StreamFilter;
+}
+
+/** Random CSP nonce token (hex — valid nonce-value characters). */
+function makeNonce(): string {
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  let s = '';
+  for (const x of b) s += x.toString(16).padStart(2, '0');
+  return s;
+}
+
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a, 0);
+  out.set(b, a.length);
+  return out;
+}
+
 /**
- * Page-world spoof function — serialized into the page via `executeScript`.
- * Must be self-contained (no closures, no imports). Receives the profile as
- * its sole argument.
+ * Build the inline `<script>` bytes to inject. Pure ASCII (profile strings are
+ * ASCII; any stray non-ASCII / `<` is \u-escaped) so it can be spliced into the
+ * response at the byte level without decoding the page's charset.
+ */
+function buildInjectedScript(profile: FingerprintProfile, nonce: string): Uint8Array {
+  const data = serializeProfile(profile);
+  const json = JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    // Escape every non-ASCII code unit so the payload is pure ASCII and can be
+    // spliced into the response at the byte level regardless of page charset.
+    .replace(/[\u0080-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+  const html = `<script nonce="${nonce}">;(${spoofFn.toString()})(${json});</script>`;
+  return new TextEncoder().encode(html);
+}
+
+/**
+ * Byte offset just after the first structural anchor (`<head>` preferred, then
+ * `<html>`, then the doctype). Returns -1 if the anchor isn't in the buffer yet
+ * (caller should wait for more data). latin1 decoding is a 1:1 byte↔char map so
+ * a char index equals the byte index for any ASCII-compatible charset.
+ */
+export function findInsertionOffset(buf: Uint8Array): number {
+  const window = buf.subarray(0, Math.min(buf.length, MAX_SCAN_BYTES));
+  const text = new TextDecoder('latin1').decode(window).toLowerCase();
+  for (const anchor of ['<head', '<html', '<!doctype']) {
+    const i = text.indexOf(anchor);
+    if (i === -1) continue;
+    const gt = text.indexOf('>', i);
+    return gt === -1 ? -1 : gt + 1; // wait for '>' if the tag is split across chunks
+  }
+  return -1;
+}
+
+/**
+ * Return a copy of the response headers with our `nonce` added to whichever CSP
+ * directive governs inline `<script>` elements. We EXTEND the page's policy
+ * (allow our one script) rather than stripping it — the page keeps every other
+ * protection. Headers without a script-governing directive are left untouched.
+ */
+function addNonceToCsp(
+  headers: Array<{ name: string; value?: string }>,
+  nonce: string,
+): Array<{ name: string; value?: string }> {
+  return headers.map((h) => {
+    if (h.name.toLowerCase() !== 'content-security-policy' || !h.value) return h;
+    return { ...h, value: injectCspNonce(h.value, nonce) };
+  });
+}
+
+export function injectCspNonce(value: string, nonce: string): string {
+  const directives = value
+    .split(';')
+    .map((d) => d.trim())
+    .filter(Boolean);
+  const nameOf = (d: string) => d.split(/\s+/)[0]?.toLowerCase() ?? '';
+  const token = `'nonce-${nonce}'`;
+  const withNonce = (d: string) => {
+    const parts = d.split(/\s+/);
+    const sources = parts.slice(1);
+    // `'none'` must stand alone; replace it rather than appending.
+    if (sources.length === 1 && sources[0]?.toLowerCase() === "'none'") {
+      return `${parts[0]} ${token}`;
+    }
+    return `${d} ${token}`;
+  };
+
+  const idxElem = directives.findIndex((d) => nameOf(d) === 'script-src-elem');
+  const idxSrc = directives.findIndex((d) => nameOf(d) === 'script-src');
+  const idxDefault = directives.findIndex((d) => nameOf(d) === 'default-src');
+
+  if (idxElem !== -1) {
+    directives[idxElem] = withNonce(directives[idxElem] as string);
+  } else if (idxSrc !== -1) {
+    directives[idxSrc] = withNonce(directives[idxSrc] as string);
+  } else if (idxDefault !== -1) {
+    // No explicit script directive — mirror default-src into a script-src that
+    // additionally trusts our nonce, so we don't loosen non-script fetches.
+    const defSources = (directives[idxDefault] as string)
+      .split(/\s+/)
+      .slice(1)
+      .filter((s) => s.toLowerCase() !== "'none'");
+    directives.push(`script-src ${[...defSources, token].join(' ')}`.trim());
+  } else {
+    return value; // nothing restricts scripts; inline already runs
+  }
+  return directives.join('; ');
+}
+
+/**
+ * Page-world spoof function — serialized into the page (inline `<script>` or
+ * `executeScript`). Must be self-contained (no closures, no imports). Receives
+ * the profile as its sole argument.
  */
 function spoofFn(fp: SerializedProfile): void {
   // biome-ignore lint/suspicious/noExplicitAny: page-world dynamic
   type Any = any;
+
+  // Idempotent — the inline injector and the executeScript fallback could both
+  // fire; only the first application should install the traps.
+  const marker = '__contaboxFpApplied';
+  const w = globalThis as unknown as Record<string, unknown>;
+  if (w[marker]) return;
+  w[marker] = true;
 
   function defineGetter(target: object, prop: string, value: unknown): void {
     try {
