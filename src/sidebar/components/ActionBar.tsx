@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { BulkCreateDialog } from './BulkCreateDialog';
 import { BulkOpenUrlDialog } from './BulkOpenUrlDialog';
 import { CreateContainerDialog } from './CreateContainerDialog';
+import { SyncButton } from './SyncButton';
 
 export function ActionBar() {
   const [showCreate, setShowCreate] = useState(false);
@@ -11,7 +12,7 @@ export function ActionBar() {
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-1.5 border-b border-[var(--color-border)] px-2 py-2">
+      <div className="grid grid-cols-4 gap-1.5 border-b border-[var(--color-border)] px-2 py-2">
         <button
           type="button"
           onClick={() => setShowCreate(true)}
@@ -36,6 +37,7 @@ export function ActionBar() {
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           Open URL
         </button>
+        <SyncButton />
       </div>
       {showCreate ? <CreateContainerDialog onClose={() => setShowCreate(false)} /> : null}
       {showBulk ? <BulkCreateDialog onClose={() => setShowBulk(false)} /> : null}
