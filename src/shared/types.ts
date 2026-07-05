@@ -79,6 +79,10 @@ export interface ContainerExt {
   order: number;
   createdAt: number;
   lastUsedAt: number;
+  /** Last local mutation time; used for three-way sync merge. Auto-stamped by
+   *  Dexie hooks on every write; optional in the type so call sites don't have
+   *  to set it (the hook does). Backfilled = createdAt for pre-v4 rows. */
+  updatedAt?: number;
 }
 
 /** Hydrated view: native container joined with its extended attrs. */
@@ -102,6 +106,8 @@ export interface Workspace {
    */
   isNative?: boolean;
   createdAt: number;
+  /** Last local mutation time; used for three-way sync merge. Auto-stamped by Dexie hooks; optional in type so call sites rely on the hook. */
+  updatedAt?: number;
 }
 
 export interface Template {
@@ -117,6 +123,8 @@ export interface Template {
   defaultUrl?: string;
   notes: string;
   createdAt: number;
+  /** Last local mutation time; used for three-way sync merge. Auto-stamped by Dexie hooks; optional in type so call sites rely on the hook. */
+  updatedAt?: number;
 }
 
 export type ProxyType = 'http' | 'https' | 'socks4' | 'socks5';
@@ -144,6 +152,8 @@ export interface Proxy {
    */
   disabled?: boolean;
   createdAt: number;
+  /** Last local mutation time; used for three-way sync merge. Auto-stamped by Dexie hooks; optional in type so call sites rely on the hook. */
+  updatedAt?: number;
 }
 
 export type RotationStrategy = 'random' | 'round-robin' | 'sticky-per-session';
@@ -155,6 +165,8 @@ export interface ProxyPool {
   rotation: RotationStrategy;
   cooldownSec: number;
   createdAt: number;
+  /** Last local mutation time; used for three-way sync merge. Auto-stamped by Dexie hooks; optional in type so call sites rely on the hook. */
+  updatedAt?: number;
 }
 
 export type WebRtcMode = 'real' | 'proxy' | 'disabled';
@@ -175,6 +187,8 @@ export interface FingerprintProfile {
   deviceMemory: number;
   webrtcMode: WebRtcMode;
   createdAt: number;
+  /** Last local mutation time; used for three-way sync merge. Auto-stamped by Dexie hooks; optional in type so call sites rely on the hook. */
+  updatedAt?: number;
 }
 
 export interface Snapshot {
@@ -255,6 +269,8 @@ export interface AutoRule {
   order: number;
   action: 'open-in' | 'redirect';
   createdAt: number;
+  /** Last local mutation time; used for three-way sync merge. Auto-stamped by Dexie hooks; optional in type so call sites rely on the hook. */
+  updatedAt?: number;
 }
 
 export type VaultEntryKind = 'password' | 'totp' | 'note' | 'proxy-credential';

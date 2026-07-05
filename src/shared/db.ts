@@ -18,6 +18,39 @@ import type {
   VaultEntry,
   Workspace,
 } from './types';
+import { now } from './utils';
+
+/** Tables whose rows participate in Drive sync (in-memory merge, not indexed). */
+export const SYNCED_TABLES = [
+  'containers',
+  'workspaces',
+  'templates',
+  'proxies',
+  'proxyPools',
+  'fingerprints',
+  'rules',
+  'vault',
+] as const;
+
+let _suppress = false;
+/**
+ * Raised by sync-engine while it writes merged results, so applying a sync
+ * neither overwrites the resolved `updatedAt` nor re-marks the data dirty.
+ */
+export function setSuppressSyncStamp(on: boolean): void {
+  _suppress = on;
+}
+
+/** In-process dirty flag, set by the sync hooks on every local write. Not
+ *  persisted per-write (that raced DB teardown); the engine persists it to
+ *  `meta` at sync time. Cleared by `clearSyncDirty()`. */
+let _syncDirty = false;
+export function isSyncDirty(): boolean {
+  return _syncDirty;
+}
+export function clearSyncDirty(): void {
+  _syncDirty = false;
+}
 
 export class ContaboxDB extends Dexie {
   containers!: Table<ContainerExt, string>;
@@ -88,6 +121,54 @@ export class ContaboxDB extends Dexie {
       proxies: 'id, poolId, lastHealthStatus',
       rules: 'id, order, containerId',
     });
+
+    // v4 — Drive sync. Adds `updatedAt` to synced tables (backfill = createdAt).
+    // Additive: no columns removed, no keyPath renamed. `updatedAt` is not
+    // indexed (the merge scans in memory), so the `stores()` lines are
+    // unchanged; only the upgrade backfill runs.
+    this.version(4).upgrade(async (tx) => {
+      for (const name of [
+        'containers',
+        'workspaces',
+        'templates',
+        'proxies',
+        'proxyPools',
+        'fingerprints',
+        'rules',
+      ]) {
+        await tx
+          .table<{ createdAt?: number; updatedAt?: number }>(name)
+          .toCollection()
+          .modify((r) => {
+            r.updatedAt ??= r.createdAt ?? 0;
+          });
+      }
+    });
+
+    this.installSyncHooks();
+  }
+
+  /**
+   * Per-table hooks that (a) auto-stamp `updatedAt` on every create/update so
+   * the three-way merge has a per-row clock with zero call-site wiring, and
+   * (b) set the in-process `_syncDirty` flag. Both are suppressed while the
+   * sync engine writes merged results back (see `setSuppressSyncStamp`).
+   */
+  private installSyncHooks(): void {
+    for (const name of SYNCED_TABLES) {
+      const table = (this as unknown as Record<string, Table>)[name];
+      if (!table) continue;
+      table.hook('creating', (_pk, obj: { updatedAt?: number }) => {
+        if (!_suppress) obj.updatedAt = now();
+        else obj.updatedAt ??= now();
+        if (!_suppress) _syncDirty = true;
+      });
+      table.hook('updating', (_mods, _pk, _obj: { updatedAt?: number }) => {
+        if (_suppress) return undefined; // keep merged updatedAt as-is
+        _syncDirty = true;
+        return { updatedAt: now() };
+      });
+    }
   }
 }
 
