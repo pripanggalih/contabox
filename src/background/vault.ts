@@ -12,14 +12,14 @@
  */
 import { browser } from '@shared/browser';
 import {
-  type Encrypted,
-  SALT_LEN,
   base64ToBytes,
   bytesToBase64,
   decryptString,
   deriveKey,
+  type Encrypted,
   encryptString,
   randomBytes,
+  SALT_LEN,
 } from '@shared/crypto';
 import { getDb } from '@shared/db';
 import { META_VAULT_AUTOLOCK_MIN, META_VAULT_SALT, META_VAULT_VERIFIER } from '@shared/meta-keys';

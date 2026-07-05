@@ -98,13 +98,7 @@ export function AutoRulesPanel({ containers }: Props) {
   );
 }
 
-function RuleForm({
-  containers,
-  onDone,
-}: {
-  containers: ContainerView[];
-  onDone: () => void;
-}) {
+function RuleForm({ containers, onDone }: { containers: ContainerView[]; onDone: () => void }) {
   const [pattern, setPattern] = useState('');
   const [patternType, setPatternType] = useState<'domain' | 'substring' | 'glob' | 'regex'>(
     'domain',

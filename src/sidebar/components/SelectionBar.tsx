@@ -253,13 +253,7 @@ function BarButton({
   );
 }
 
-function Menu({
-  onClose,
-  children,
-}: {
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
+function Menu({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!(e.target as HTMLElement).closest('[data-bulk-menu]')) onClose();

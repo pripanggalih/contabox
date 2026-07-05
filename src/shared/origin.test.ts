@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { originMatchKeys, originMatches, parseOrigin } from '../shared/origin';
+import { originMatches, originMatchKeys, parseOrigin } from '../shared/origin';
 
 describe('parseOrigin', () => {
   it('accepts bare URLs', () => {

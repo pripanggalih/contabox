@@ -16,7 +16,7 @@
  */
 import { browser } from '@shared/browser';
 import { getDb } from '@shared/db';
-import { originMatchKeys, originMatches } from '@shared/origin';
+import { originMatches, originMatchKeys } from '@shared/origin';
 import type { VaultEntry, VaultEntryKind } from '@shared/types';
 import { vault } from './vault';
 

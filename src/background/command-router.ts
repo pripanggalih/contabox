@@ -7,11 +7,11 @@
 import { browser } from '@shared/browser';
 import { getDb } from '@shared/db';
 import {
+  broadcast,
   type Command,
   type CommandResult,
   type CommandType,
   type ErrorCode,
-  broadcast,
 } from '@shared/messaging';
 import {
   autoRuleInputSchema,

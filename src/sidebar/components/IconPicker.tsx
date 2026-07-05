@@ -1,4 +1,5 @@
 import type { ContainerIcon } from '@shared/types';
+import type { LucideIcon } from 'lucide-react';
 /**
  * Searchable Lucide icon picker.
  *
@@ -14,7 +15,6 @@ import type { ContainerIcon } from '@shared/types';
  *     needed.
  */
 import { Search, Shuffle } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CUSTOM_ICON_CATALOG, displayIcon, randomLucideIcon } from '../lib/palette';
 

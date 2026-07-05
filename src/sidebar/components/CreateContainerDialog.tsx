@@ -4,10 +4,10 @@ import { Shuffle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   CONTAINER_ICONS,
-  EXTENDED_HEXES,
-  NATIVE_HEXES,
   closestNative,
+  EXTENDED_HEXES,
   iconComponent,
+  NATIVE_HEXES,
   randomHex,
 } from '../lib/palette';
 import { useContaboxStore } from '../state/store';

@@ -25,8 +25,8 @@ import {
   Beer,
   Bell,
   Bird,
-  BookOpen,
   Bookmark,
+  BookOpen,
   // Native enum components (13).
   Briefcase,
   Brush,

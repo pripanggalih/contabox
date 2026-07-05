@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.5.2/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,13 +7,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": [
-      "dist",
-      "public-pages",
-      "web-ext-artifacts",
-      "node_modules",
-      "playwright-report",
-      "test-results"
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/public-pages",
+      "!**/web-ext-artifacts",
+      "!**/node_modules",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/*.svg"
     ]
   },
   "formatter": {
@@ -23,11 +25,11 @@
     "lineWidth": 100,
     "lineEnding": "lf"
   },
-  "organizeImports": { "enabled": true },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
         "noExplicitAny": "warn",
         "noConsole": "off",
@@ -40,14 +42,19 @@
       },
       "complexity": {
         "noBannedTypes": "off",
-        "noUselessSwitchCase": "off"
+        "noUselessSwitchCase": "off",
+        "noImportantStyles": "off"
       },
       "a11y": {
         "noLabelWithoutControl": "off",
         "useKeyWithClickEvents": "off",
         "useButtonType": "off",
         "useSemanticElements": "off",
-        "noAutofocus": "off"
+        "noAutofocus": "off",
+        "noNoninteractiveElementToInteractiveRole": "off",
+        "useFocusableInteractive": "off",
+        "useAriaPropsSupportedByRole": "off",
+        "noStaticElementInteractions": "off"
       },
       "correctness": {
         "noUnusedImports": "warn",
@@ -66,5 +73,8 @@
   },
   "json": {
     "parser": { "allowComments": true, "allowTrailingCommas": false }
+  },
+  "css": {
+    "parser": { "tailwindDirectives": true }
   }
 }

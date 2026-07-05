@@ -20,14 +20,14 @@ posture.
 
 | Layer | Choice | Why |
 |---|---|---|
-| Language | TypeScript 5 strict | Types crossing trust boundaries are validated with Zod |
-| UI | React 18 + Tailwind v4 | Reusable components, modern utility CSS |
-| State | Zustand | Per-surface stores (sidebar / options / popup) |
+| Language | TypeScript 6 strict | Types crossing trust boundaries are validated with Zod |
+| UI | React 19 + Tailwind v4 | Reusable components, modern utility CSS |
+| State | Zustand v5 | Per-surface stores (sidebar / options / popup) |
 | Storage | Dexie (IndexedDB) | Versioned migrations live in `src/shared/db.ts` |
 | Crypto | Web Crypto only | No third-party crypto libs |
-| Bundler | Vite + `@vitejs/plugin-react` + `@tailwindcss/vite` | Fast dev, multi-entry build |
+| Bundler | Vite 8 + `@vitejs/plugin-react` + `@tailwindcss/vite` | Fast dev, multi-entry build |
 | Packaging | `web-ext` (Mozilla) | Build, lint, sign, run |
-| Lint/format | Biome 1.9 | Single tool for both |
+| Lint/format | Biome 2 | Single tool for both |
 | Tests | Vitest + jsdom (unit), Playwright scaffold (e2e) | `pnpm test`, `pnpm test:e2e` |
 | Pkg manager | pnpm 10.14 (set via `packageManager`) | Lockfile is committed |
 

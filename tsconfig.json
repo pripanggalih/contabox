@@ -22,12 +22,11 @@
     "verbatimModuleSyntax": false,
     "useDefineForClassFields": true,
     "types": ["firefox-webext-browser", "vite/client", "node"],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@shared/*": ["src/shared/*"],
-      "@bg/*": ["src/background/*"],
-      "@ui/*": ["src/ui/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@bg/*": ["./src/background/*"],
+      "@ui/*": ["./src/ui/*"]
     }
   },
   "include": ["src", "vite.config.ts", "vite.landing.config.ts", "vitest.config.ts"],
