@@ -65,10 +65,10 @@ export function Modal({ title, onClose, children, size = 'md' }: Props) {
       onKeyDown={(e) => e.stopPropagation()}
     >
       <div
-        className={`w-full ${SIZE[size]} rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-xl`}
+        className={`flex max-h-[90vh] w-full flex-col ${SIZE[size]} rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-primary)] shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-[var(--color-border)] px-4 py-2.5">
+        <header className="flex flex-none items-center justify-between border-b border-[var(--color-border)] px-4 py-2.5">
           <h2 className="text-sm font-semibold">{title}</h2>
           <button
             type="button"
@@ -79,7 +79,7 @@ export function Modal({ title, onClose, children, size = 'md' }: Props) {
             ×
           </button>
         </header>
-        <div className="p-4">{children}</div>
+        <div className="overflow-y-auto p-4">{children}</div>
       </div>
     </div>,
     document.body,

@@ -1,5 +1,6 @@
 import { invoke } from '@shared/messaging';
 import type {
+  ContainerColor,
   ContainerIcon,
   ContainerView,
   FingerprintProfile,
@@ -7,7 +8,7 @@ import type {
   Workspace,
 } from '@shared/types';
 import { useEffect, useState } from 'react';
-import { CONTAINER_ICONS, iconComponent, NATIVE_HEXES } from '../lib/palette';
+import { CONTAINER_COLORS, CONTAINER_ICONS, iconComponent, NATIVE_HEXES } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
 import { Modal } from './Modal';
 
@@ -31,6 +32,7 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
   const [workspaceId, setWorkspaceId] = useState(view.ext.workspaceId ?? '');
   const [proxyId, setProxyId] = useState(view.ext.proxyId ?? '');
   const [fingerprintId, setFingerprintId] = useState(view.ext.fingerprintId ?? '');
+  const [color, setColor] = useState<ContainerColor>(view.color);
   const [icon, setIcon] = useState<ContainerIcon>(view.icon);
   const [autoSnapshot, setAutoSnapshot] = useState(view.ext.autoSnapshot);
   const [retentionDaysRaw, setRetentionDaysRaw] = useState(
@@ -79,6 +81,7 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
           workspaceId: workspaceId || null,
           proxyId: proxyId || null,
           fingerprintId: fingerprintId || null,
+          color,
           icon,
           autoSnapshot,
           retentionDays: retentionParsed,
@@ -161,6 +164,30 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
           </select>
         </Field>
 
+        <Field label="Color">
+          <div className="grid grid-cols-9 gap-1.5" role="radiogroup" aria-label="Color">
+            {CONTAINER_COLORS.map((c) => {
+              const selected = color === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={c}
+                  onClick={() => setColor(c)}
+                  className={`h-7 w-7 rounded-full border-2 transition ${
+                    selected
+                      ? 'scale-110 border-[var(--color-text-primary)]'
+                      : 'border-transparent hover:scale-105'
+                  }`}
+                  style={{ background: NATIVE_HEXES[c] }}
+                />
+              );
+            })}
+          </div>
+        </Field>
+
         <Field label="Icon">
           <div className="grid grid-cols-7 gap-1.5" role="radiogroup" aria-label="Icon">
             {CONTAINER_ICONS.map((i) => {
@@ -179,7 +206,7 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
                       ? 'border-[var(--color-accent)] bg-[var(--color-bg-hover)]'
                       : 'border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]'
                   }`}
-                  style={{ color: NATIVE_HEXES[view.color] }}
+                  style={{ color: NATIVE_HEXES[color] }}
                 >
                   <Icon className="h-4 w-4" />
                 </button>

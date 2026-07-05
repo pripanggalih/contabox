@@ -2,11 +2,12 @@ import { useDroppable } from '@dnd-kit/core';
 import { fuzzyScore } from '@shared/fuzzy';
 import { invoke } from '@shared/messaging';
 import type { ContainerView, Workspace } from '@shared/types';
-import { ChevronDown, ChevronRight, FolderPlus, Play, Power } from 'lucide-react';
+import { ChevronDown, ChevronRight, FolderPlus, Play, Plus, Power } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { useContaboxStore } from '../state/store';
 import { ContainerRow } from './ContainerRow';
+import { CreateContainerDialog } from './CreateContainerDialog';
 import { WorkspaceGlyph } from './WorkspaceGlyph';
 
 const ORPHAN_ID = '__orphan__';
@@ -22,6 +23,7 @@ function WorkspaceSection({ workspace, containers }: SectionProps) {
 
   const id = workspace?.id ?? ORPHAN_ID;
   const [collapsed, setCollapsed] = useState<boolean>(workspace?.collapsed ?? false);
+  const [showCreate, setShowCreate] = useState(false);
   const { setNodeRef, isOver } = useDroppable({ id });
 
   useEffect(() => {
@@ -114,6 +116,15 @@ function WorkspaceSection({ workspace, containers }: SectionProps) {
           <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
             <button
               type="button"
+              onClick={() => setShowCreate(true)}
+              aria-label="New container here"
+              title="New container in this workspace"
+              className="rounded p-1 text-[var(--color-text-muted)] hover:bg-[var(--color-bg-hover)]"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
               onClick={openAll}
               aria-label="Open all"
               title="Open all"
@@ -161,6 +172,9 @@ function WorkspaceSection({ workspace, containers }: SectionProps) {
             containers.map((c) => <ContainerRow key={c.cookieStoreId} view={c} />)
           )}
         </ul>
+      ) : null}
+      {showCreate && workspace ? (
+        <CreateContainerDialog workspaceId={workspace.id} onClose={() => setShowCreate(false)} />
       ) : null}
     </section>
   );

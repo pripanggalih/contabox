@@ -7,9 +7,10 @@ import { Modal } from './Modal';
 
 interface Props {
   onClose: () => void;
+  workspaceId?: string;
 }
 
-export function CreateContainerDialog({ onClose }: Props) {
+export function CreateContainerDialog({ onClose, workspaceId }: Props) {
   const refresh = useContaboxStore((s) => s.refresh);
   const pushToast = useContaboxStore((s) => s.pushToast);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +44,7 @@ export function CreateContainerDialog({ onClose }: Props) {
           name: name.trim(),
           color,
           icon,
+          workspaceId,
         },
       });
       await refresh();
