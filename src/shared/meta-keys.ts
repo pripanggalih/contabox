@@ -30,3 +30,16 @@ export const META_PROXY_FAIL_THRESHOLD = 'proxy.failThreshold';
 
 /** Scheduled-health-check interval in minutes (0 = disabled). Default 0. */
 export const META_PROXY_HEALTH_INTERVAL_MIN = 'proxy.healthIntervalMinutes';
+
+/* ---------- Drive sync ---------- */
+/** Drive file id of the encrypted sync blob in appDataFolder. Presence = connected.
+ *  v1 stores no OAuth token — each sync re-runs the interactive auth flow. */
+export const META_SYNC_FILE_ID = 'sync.fileId';
+/** Drive headRevisionId of the last blob this device synced. */
+export const META_SYNC_LAST_REVISION = 'sync.lastRevision';
+/** Last-synced merged bundle (JSON) — common ancestor for the next 3-way merge. */
+export const META_SYNC_BASE = 'sync.base';
+/** User toggle: include large cookie snapshots in the synced blob. Default false. */
+export const META_SYNC_INCLUDE_SNAPSHOTS = 'sync.includeSnapshots';
+/** Set on any local write to a synced table; cleared on successful push. */
+export const META_SYNC_DIRTY = 'sync.dirty';
