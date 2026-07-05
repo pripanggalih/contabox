@@ -4,14 +4,14 @@ import { BulkCreateDialog } from './BulkCreateDialog';
 import { BulkOpenUrlDialog } from './BulkOpenUrlDialog';
 import { CreateContainerDialog } from './CreateContainerDialog';
 
-export function Footer() {
+export function ActionBar() {
   const [showCreate, setShowCreate] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showBulkOpen, setShowBulkOpen] = useState(false);
 
   return (
     <>
-      <footer className="grid grid-cols-3 gap-1.5 border-t border-[var(--color-border)] px-2 py-2">
+      <div className="grid grid-cols-3 gap-1.5 border-b border-[var(--color-border)] px-2 py-2">
         <button
           type="button"
           onClick={() => setShowCreate(true)}
@@ -36,7 +36,7 @@ export function Footer() {
           <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
           Open URL
         </button>
-      </footer>
+      </div>
       {showCreate ? <CreateContainerDialog onClose={() => setShowCreate(false)} /> : null}
       {showBulk ? <BulkCreateDialog onClose={() => setShowBulk(false)} /> : null}
       {showBulkOpen ? <BulkOpenUrlDialog onClose={() => setShowBulkOpen(false)} /> : null}

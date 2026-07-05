@@ -1,9 +1,9 @@
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { invoke, onBroadcast } from '@shared/messaging';
 import { useEffect, useState } from 'react';
+import { ActionBar } from './components/ActionBar';
 import { CommandPalette } from './components/CommandPalette';
 import { CreateWorkspaceDialog } from './components/CreateWorkspaceDialog';
-import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { ONBOARDED_META_KEY, OnboardingWizard } from './components/OnboardingWizard';
 import { SelectionBar } from './components/SelectionBar';
@@ -83,13 +83,13 @@ export function App() {
     <div className="flex h-full flex-col bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]">
       <Header />
       <TagFilterBar />
+      <ActionBar />
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <main className="flex-1 overflow-y-auto" aria-label="Containers">
           <WorkspaceTree onCreateWorkspace={() => setShowCreateWs(true)} />
         </main>
       </DndContext>
       <SelectionBar />
-      <Footer />
       <ToastHost />
       {showCreateWs ? <CreateWorkspaceDialog onClose={() => setShowCreateWs(false)} /> : null}
       {showPalette ? <CommandPalette onClose={() => setShowPalette(false)} /> : null}
