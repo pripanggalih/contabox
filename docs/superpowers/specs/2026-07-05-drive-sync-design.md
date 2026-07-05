@@ -168,16 +168,44 @@ if a "remote changed" indicator is added.
 ### First-sync bootstrap (fresh device B)
 
 The blob is AES-GCM-wrapped under device A's master password, and A's vault
-entries use A's salt/verifier. Therefore B must use the **same master password**.
+entries use A's salt/verifier. So B must open the blob with the **same master
+password** it was created under. On connect, B compares the blob's vault verifier
+against its own local vault and lands in one of three cases:
 
-- If B's vault is **not yet initialized** on connect: adopt the blob's vault
-  salt + verifier + entries — B becomes A's twin, and the user unlocks with A's
-  master password.
-- If B's vault **is already initialized with a different password**: reject with
-  a clear warning ("master password differs — cannot merge; the encrypted blob
-  can only be opened with the password it was created under"). No silent
-  overwrite, no data loss.
-- If B's vault is already initialized with the **same** password: normal merge.
+1. **B's vault not yet initialized (fresh install):** adopt the blob's vault
+   salt + verifier + entries. B becomes A's twin; the user unlocks with A's
+   master password. No dialog beyond "enter the master password for this backup".
+
+2. **B already initialized, same master password:** normal merge. Transparent.
+
+3. **B already initialized, different master password:** the confusing case.
+   Never show a raw "rejected" error. Instead present a plain-language
+   **reconcile dialog** (see UI below) that names the situation and offers
+   explicit, consequence-labelled choices. Nothing is overwritten until the user
+   picks.
+
+#### Reconcile dialog (case 3)
+
+Title: *"This Google Drive already has Contabox data from another setup."*
+Body: *"The backup on Drive uses a different master password than this device.
+They can't be merged automatically because each is encrypted with its own
+password. Choose how to continue:"*
+
+- **Use the Drive data** *(recommended if this device is new-ish)* — "Enter the
+  master password for the Drive backup. This device's current Contabox data will
+  be replaced by the synced data." Before replacing, auto-offer an encrypted
+  export of the local data (`backupManager.exportEncrypted`) so nothing is
+  unrecoverable.
+- **Push this device's data to Drive instead** — "Overwrite the Drive backup with
+  this device's data. Other devices syncing from Drive will need to reconcile the
+  same way." Confirm with a second explicit warning naming that it overwrites the
+  other setup.
+- **Cancel** — do nothing; leave both sides untouched. The device stays
+  unconnected.
+
+The dialog copy must spell out *what gets replaced* in each branch. No branch
+loses data silently — the destructive branches either take a fresh export first
+or require a second confirmation.
 
 ## UI
 
@@ -211,6 +239,10 @@ vault is locked or Drive is not connected.
 - Snapshot toggle defaults OFF to keep the blob small and avoid syncing large,
   lock-sensitive cookie data by surprise.
 - All cross-boundary sync messages validated with Zod (`src/shared/schemas.ts`).
+- Password mismatch can surface **mid-sync**, not only at connect: if the remote
+  blob's vault verifier stops matching (e.g. the master password was reset on
+  another device), a push/pull must not crash or silently clobber. It routes to
+  the same reconcile dialog (case 3) instead of erroring out.
 
 ## Testing
 
