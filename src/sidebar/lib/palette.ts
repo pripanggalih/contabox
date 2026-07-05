@@ -4,7 +4,6 @@
  * Firefox accepts only 9 named colors and 13 named icons at the API level, and
  * Contabox exposes exactly those — no custom hex or extra icons.
  *   - NATIVE_HEXES   → the 9 native colors → hex, for picker/preview UI
- *   - colorVar()     → CSS var for a native color
  *   - iconComponent()/displayIcon() → native icon name → Lucide component
  *   - displayHex()   → native color → hex
  */
@@ -66,10 +65,6 @@ export const NATIVE_HEXES: Record<ContainerColor, string> = {
   purple: '#af51f5',
   toolbar: '#7c7c7d',
 };
-
-export function colorVar(c: ContainerColor): string {
-  return `var(--color-container-${c})`;
-}
 
 /** Display hex for a native container color. */
 export function displayHex(view: { color: ContainerColor }): string {

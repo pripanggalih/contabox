@@ -2,7 +2,7 @@ import { invoke } from '@shared/messaging';
 import type { ContainerColor, ContainerIcon } from '@shared/types';
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { CONTAINER_COLORS, CONTAINER_ICONS, colorVar, iconComponent } from '../lib/palette';
+import { CONTAINER_COLORS, CONTAINER_ICONS, iconComponent, NATIVE_HEXES } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
 import { Modal } from './Modal';
 
@@ -77,7 +77,10 @@ export function TemplateManagerDialog({ onClose }: Props) {
                     key={t.id}
                     className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2.5 py-2"
                   >
-                    <Icon className="h-4 w-4" style={{ color: colorVar(t.containerSeed.color) }} />
+                    <Icon
+                      className="h-4 w-4"
+                      style={{ color: NATIVE_HEXES[t.containerSeed.color] }}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">{t.name}</div>
                       <div className="truncate text-xs text-[var(--color-text-muted)] font-mono">
@@ -150,7 +153,7 @@ export function TemplateManagerDialog({ onClose }: Props) {
                       className={`h-6 w-6 rounded-full border-2 ${
                         color === c ? 'border-[var(--color-text-primary)]' : 'border-transparent'
                       }`}
-                      style={{ background: colorVar(c) }}
+                      style={{ background: NATIVE_HEXES[c] }}
                     />
                   ))}
                 </div>
@@ -172,7 +175,7 @@ export function TemplateManagerDialog({ onClose }: Props) {
                             ? 'border-[var(--color-accent)] bg-[var(--color-bg-hover)]'
                             : 'border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]'
                         }`}
-                        style={{ color: colorVar(color) }}
+                        style={{ color: NATIVE_HEXES[color] }}
                       >
                         <Icon className="h-3.5 w-3.5" />
                       </button>
