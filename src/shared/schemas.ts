@@ -34,21 +34,10 @@ export const containerIconSchema = z.enum([
   'fence',
 ]);
 
-/** Lucide icon names are PascalCase identifiers, e.g. "Briefcase", "Plane". */
-const customIconSchema = z
-  .string()
-  .regex(/^[A-Z][a-zA-Z0-9]*$/, 'must be a Lucide icon name')
-  .max(64);
-
 export const createContainerInputSchema = z.object({
   name: z.string().trim().min(1).max(50),
   color: containerColorSchema,
   icon: containerIconSchema,
-  customColor: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/, 'must be #RRGGBB')
-    .optional(),
-  customIcon: customIconSchema.optional(),
   workspaceId: z.string().optional(),
   templateId: z.string().optional(),
   defaultUrl: z.string().url().optional(),
@@ -62,12 +51,6 @@ export const updateContainerInputSchema = z.object({
   name: z.string().trim().min(1).max(50).optional(),
   color: containerColorSchema.optional(),
   icon: containerIconSchema.optional(),
-  customColor: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
-    .nullable()
-    .optional(),
-  customIcon: customIconSchema.nullable().optional(),
   workspaceId: z.string().nullable().optional(),
   defaultUrl: z.string().url().nullable().optional(),
   tags: z.array(z.string()).optional(),
@@ -87,14 +70,9 @@ export const bulkCreateInputSchema = z.object({
   namePattern: z.string().min(1).max(80),
   color: containerColorSchema,
   icon: containerIconSchema,
-  customColor: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
-    .optional(),
-  customIcon: customIconSchema.optional(),
-  /** When true, every spawned container gets a fresh random hex color. */
+  /** When true, every spawned container gets a random native color. */
   randomColor: z.boolean().default(false),
-  /** When true, every spawned container gets a fresh random Lucide icon. */
+  /** When true, every spawned container gets a random native icon. */
   randomIcon: z.boolean().default(false),
   workspaceId: z.string().optional(),
   templateId: z.string().optional(),
@@ -112,8 +90,8 @@ export type BulkOpenUrlInput = z.infer<typeof bulkOpenUrlInputSchema>;
 
 export const workspaceInputSchema = z.object({
   name: z.string().trim().min(1).max(50),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  icon: z.string().max(8),
+  color: containerColorSchema,
+  icon: containerIconSchema,
   defaultUrls: z.array(z.string().url()).optional(),
 });
 export type WorkspaceInput = z.infer<typeof workspaceInputSchema>;

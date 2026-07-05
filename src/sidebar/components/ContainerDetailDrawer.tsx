@@ -1,9 +1,14 @@
 import { invoke } from '@shared/messaging';
-import type { ContainerView, FingerprintProfile, Proxy, Workspace } from '@shared/types';
+import type {
+  ContainerIcon,
+  ContainerView,
+  FingerprintProfile,
+  Proxy,
+  Workspace,
+} from '@shared/types';
 import { useEffect, useState } from 'react';
-import { displayHex } from '../lib/palette';
+import { CONTAINER_ICONS, iconComponent, NATIVE_HEXES } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
-import { IconPicker } from './IconPicker';
 import { Modal } from './Modal';
 
 interface Props {
@@ -26,7 +31,7 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
   const [workspaceId, setWorkspaceId] = useState(view.ext.workspaceId ?? '');
   const [proxyId, setProxyId] = useState(view.ext.proxyId ?? '');
   const [fingerprintId, setFingerprintId] = useState(view.ext.fingerprintId ?? '');
-  const [customIcon, setCustomIcon] = useState<string | undefined>(view.ext.customIcon);
+  const [icon, setIcon] = useState<ContainerIcon>(view.icon);
   const [autoSnapshot, setAutoSnapshot] = useState(view.ext.autoSnapshot);
   const [retentionDaysRaw, setRetentionDaysRaw] = useState(
     view.ext.retentionDays !== undefined ? String(view.ext.retentionDays) : '',
@@ -74,7 +79,7 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
           workspaceId: workspaceId || null,
           proxyId: proxyId || null,
           fingerprintId: fingerprintId || null,
-          customIcon: customIcon ?? null,
+          icon,
           autoSnapshot,
           retentionDays: retentionParsed,
           snapshotIncludeIdb: includeIdb,
@@ -157,16 +162,30 @@ export function ContainerDetailDrawer({ view, onClose }: Props) {
         </Field>
 
         <Field label="Icon">
-          <IconPicker
-            nativeIcon={view.icon}
-            value={customIcon}
-            color={displayHex(view)}
-            onChange={setCustomIcon}
-          />
-          <p className="mt-1 text-[10px] text-[var(--color-text-muted)]">
-            Custom icons appear in the sidebar and popup. Firefox's tab strip keeps the native
-            glyph.
-          </p>
+          <div className="grid grid-cols-7 gap-1.5" role="radiogroup" aria-label="Icon">
+            {CONTAINER_ICONS.map((i) => {
+              const Icon = iconComponent(i);
+              const selected = icon === i;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={i}
+                  onClick={() => setIcon(i)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-md border transition ${
+                    selected
+                      ? 'border-[var(--color-accent)] bg-[var(--color-bg-hover)]'
+                      : 'border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]'
+                  }`}
+                  style={{ color: NATIVE_HEXES[view.color] }}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              );
+            })}
+          </div>
         </Field>
 
         <div className="grid grid-cols-2 gap-3">

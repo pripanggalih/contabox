@@ -1,5 +1,7 @@
 import { invoke } from '@shared/messaging';
+import type { ContainerColor, ContainerIcon } from '@shared/types';
 import { useState } from 'react';
+import { CONTAINER_COLORS, CONTAINER_ICONS, iconComponent, NATIVE_HEXES } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
 import { Modal } from './Modal';
 
@@ -7,26 +9,13 @@ interface Props {
   onClose: () => void;
 }
 
-const SWATCHES = [
-  '#3b82f6',
-  '#06b6d4',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#a855f7',
-  '#ec4899',
-  '#6b7280',
-];
-
-const ICONS = ['🏢', '🎨', '🧪', '🛒', '🔬', '📚', '💼', '🎮', '🎵', '🏠', '🌐', '🚀'];
-
 export function CreateWorkspaceDialog({ onClose }: Props) {
   const refresh = useContaboxStore((s) => s.refresh);
   const pushToast = useContaboxStore((s) => s.pushToast);
 
   const [name, setName] = useState('');
-  const [color, setColor] = useState(SWATCHES[0] ?? '#3b82f6');
-  const [icon, setIcon] = useState(ICONS[0] ?? '🏢');
+  const [color, setColor] = useState<ContainerColor>('blue');
+  const [icon, setIcon] = useState<ContainerIcon>('briefcase');
   const [submitting, setSubmitting] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -68,7 +57,7 @@ export function CreateWorkspaceDialog({ onClose }: Props) {
         <fieldset>
           <legend className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">Color</legend>
           <div className="flex flex-wrap gap-1.5">
-            {SWATCHES.map((c) => (
+            {CONTAINER_COLORS.map((c) => (
               <button
                 key={c}
                 type="button"
@@ -78,7 +67,7 @@ export function CreateWorkspaceDialog({ onClose }: Props) {
                 className={`h-7 w-7 rounded-full border-2 ${
                   color === c ? 'border-[var(--color-text-primary)]' : 'border-transparent'
                 }`}
-                style={{ background: c }}
+                style={{ background: NATIVE_HEXES[c] }}
               />
             ))}
           </div>
@@ -87,22 +76,26 @@ export function CreateWorkspaceDialog({ onClose }: Props) {
         <fieldset>
           <legend className="mb-1 text-xs font-medium text-[var(--color-text-muted)]">Icon</legend>
           <div className="flex flex-wrap gap-1.5">
-            {ICONS.map((i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={i}
-                aria-pressed={icon === i}
-                onClick={() => setIcon(i)}
-                className={`flex h-8 w-8 items-center justify-center rounded border text-lg ${
-                  icon === i
-                    ? 'border-[var(--color-accent)] bg-[var(--color-bg-hover)]'
-                    : 'border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]'
-                }`}
-              >
-                {i}
-              </button>
-            ))}
+            {CONTAINER_ICONS.map((i) => {
+              const Icon = iconComponent(i);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={i}
+                  aria-pressed={icon === i}
+                  onClick={() => setIcon(i)}
+                  className={`flex h-8 w-8 items-center justify-center rounded border ${
+                    icon === i
+                      ? 'border-[var(--color-accent)] bg-[var(--color-bg-hover)]'
+                      : 'border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]'
+                  }`}
+                  style={{ color: NATIVE_HEXES[color] }}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              );
+            })}
           </div>
         </fieldset>
 

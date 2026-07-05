@@ -76,15 +76,6 @@ export interface ContainerExt {
    */
   proxyFailClosed?: boolean;
   defaultUrl?: string;
-  /** Optional hex override. When set, sidebar/popup render this instead of the
-   *  9 native Firefox colors. The native `contextualIdentities` color is the
-   *  closest match from the enum (used by Firefox's tab strip indicator). */
-  customColor?: string;
-  /** Optional Lucide icon name override (e.g. "Plane", "Database"). When set,
-   *  sidebar/popup/palette render this instead of the 13-value native icon
-   *  enum. The native `contextualIdentities` icon stays as-is — Firefox's tab
-   *  strip indicator keeps showing one of its built-in glyphs. */
-  customIcon?: string;
   order: number;
   createdAt: number;
   lastUsedAt: number;
@@ -98,8 +89,8 @@ export interface ContainerView extends NativeContainer {
 export interface Workspace {
   id: string;
   name: string;
-  color: string;
-  icon: string;
+  color: ContainerColor;
+  icon: ContainerIcon;
   defaultUrls: string[];
   order: number;
   collapsed: boolean;

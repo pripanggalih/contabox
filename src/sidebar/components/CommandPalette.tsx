@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { displayHex, displayIcon } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
+import { WorkspaceGlyph } from './WorkspaceGlyph';
 
 interface Props {
   onClose: () => void;
@@ -117,7 +118,7 @@ export function CommandPalette({ onClose }: Props) {
                     onSelect={() => openWorkspaceAll(w.id)}
                     className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm aria-selected:bg-[var(--color-bg-hover)]"
                   >
-                    <span style={{ color: w.color }}>{w.icon}</span>
+                    <WorkspaceGlyph workspace={w} className="h-3.5 w-3.5" />
                     <span>Open all in {w.name}</span>
                   </Command.Item>
                   <Command.Item
@@ -125,7 +126,7 @@ export function CommandPalette({ onClose }: Props) {
                     onSelect={() => hibernateWorkspace(w.id)}
                     className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm aria-selected:bg-[var(--color-bg-hover)]"
                   >
-                    <span style={{ color: w.color }}>{w.icon}</span>
+                    <WorkspaceGlyph workspace={w} className="h-3.5 w-3.5" />
                     <span>Hibernate {w.name}</span>
                   </Command.Item>
                 </div>

@@ -10,9 +10,9 @@
  * are removed permanently.
  */
 import { browser } from '@shared/browser';
-import { closestNativeColor, randomHexColor } from '@shared/color';
+import { randomNativeColor } from '@shared/color';
 import { getDb } from '@shared/db';
-import { randomLucideIcon } from '@shared/icons';
+import { randomNativeIcon } from '@shared/icons';
 import type {
   BulkCreateInput,
   BulkOpenUrlInput,
@@ -75,11 +75,9 @@ export class ContainerManager {
   }
 
   async create(input: CreateContainerInput): Promise<ContainerView> {
-    const nativeColor = input.customColor ? closestNativeColor(input.customColor) : input.color;
-
     const native = (await browser.contextualIdentities.create({
       name: input.name,
-      color: nativeColor,
+      color: input.color,
       icon: input.icon,
     })) as unknown as NativeContainer;
 
@@ -93,8 +91,6 @@ export class ContainerManager {
       isLocked: false,
       autoSnapshot: false,
       defaultUrl: input.defaultUrl,
-      customColor: input.customColor,
-      customIcon: input.customIcon,
       order,
       createdAt: now(),
       lastUsedAt: now(),
@@ -110,11 +106,7 @@ export class ContainerManager {
     const nativePatch: { name?: string; color?: ContainerColor; icon?: ContainerIcon } = {};
     if (rest.name !== undefined) nativePatch.name = rest.name;
     if (rest.icon !== undefined) nativePatch.icon = rest.icon;
-    if (rest.customColor !== undefined && rest.customColor !== null) {
-      nativePatch.color = closestNativeColor(rest.customColor);
-    } else if (rest.color !== undefined) {
-      nativePatch.color = rest.color;
-    }
+    if (rest.color !== undefined) nativePatch.color = rest.color;
 
     if (Object.keys(nativePatch).length > 0) {
       await browser.contextualIdentities.update(cookieStoreId, nativePatch);
@@ -128,9 +120,6 @@ export class ContainerManager {
       workspaceId:
         rest.workspaceId === null ? undefined : (rest.workspaceId ?? existing.workspaceId),
       defaultUrl: rest.defaultUrl === null ? undefined : (rest.defaultUrl ?? existing.defaultUrl),
-      customColor:
-        rest.customColor === null ? undefined : (rest.customColor ?? existing.customColor),
-      customIcon: rest.customIcon === null ? undefined : (rest.customIcon ?? existing.customIcon),
       tags: rest.tags ?? existing.tags,
       notes: rest.notes ?? existing.notes,
       isLocked: rest.isLocked ?? existing.isLocked,
@@ -259,14 +248,10 @@ export class ContainerManager {
     const out: ContainerView[] = [];
     for (let i = 1; i <= input.count; i++) {
       const name = expandPattern(input.namePattern, i);
-      const customColor = input.randomColor ? randomHexColor() : input.customColor;
-      const customIcon = input.randomIcon ? randomLucideIcon() : input.customIcon;
       const view = await this.create({
         name,
-        color: input.color,
-        icon: input.icon,
-        customColor,
-        customIcon,
+        color: input.randomColor ? randomNativeColor() : input.color,
+        icon: input.randomIcon ? randomNativeIcon() : input.icon,
         workspaceId: input.workspaceId,
         templateId: input.templateId,
         tags: input.tags,

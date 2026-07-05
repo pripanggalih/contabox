@@ -15,8 +15,8 @@ import type { ContainerView, NativeContainer, Workspace } from '@shared/types';
 import { now, uuid } from '@shared/utils';
 
 const NATIVE_WORKSPACE_NAME = 'Firefox Default';
-const NATIVE_WORKSPACE_COLOR = '#7c7c7d';
-const NATIVE_WORKSPACE_ICON = '🦊';
+const NATIVE_WORKSPACE_COLOR = 'toolbar';
+const NATIVE_WORKSPACE_ICON = 'fingerprint';
 
 export class MacImporter {
   /** Native containers that don't have an ext row yet. */

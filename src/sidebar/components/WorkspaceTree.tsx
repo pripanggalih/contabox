@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { useContaboxStore } from '../state/store';
 import { ContainerRow } from './ContainerRow';
+import { WorkspaceGlyph } from './WorkspaceGlyph';
 
 const ORPHAN_ID = '__orphan__';
 
@@ -100,12 +101,8 @@ function WorkspaceSection({ workspace, containers }: SectionProps) {
             <ChevronDown className="h-3.5 w-3.5" />
           )}
         </button>
-        <span
-          className="text-sm"
-          style={workspace ? { color: workspace.color } : undefined}
-          aria-hidden="true"
-        >
-          {workspace ? workspace.icon : '📥'}
+        <span className="flex items-center text-sm" aria-hidden="true">
+          {workspace ? <WorkspaceGlyph workspace={workspace} /> : '📥'}
         </span>
         <span className="flex-1 truncate text-sm font-medium">
           {workspace ? workspace.name : 'Orphaned'}

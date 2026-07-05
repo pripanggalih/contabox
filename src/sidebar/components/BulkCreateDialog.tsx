@@ -1,18 +1,11 @@
+import { randomNativeColor } from '@shared/color';
 import { invoke } from '@shared/messaging';
 import type { ContainerColor, ContainerIcon } from '@shared/types';
 import { expandPattern } from '@shared/utils';
 import { Shuffle } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import {
-  CONTAINER_ICONS,
-  closestNative,
-  EXTENDED_HEXES,
-  iconComponent,
-  NATIVE_HEXES,
-  randomHex,
-} from '../lib/palette';
+import { CONTAINER_COLORS, CONTAINER_ICONS, iconComponent, NATIVE_HEXES } from '../lib/palette';
 import { useContaboxStore } from '../state/store';
-import { IconPicker } from './IconPicker';
 import { Modal } from './Modal';
 
 interface Props {
@@ -27,10 +20,9 @@ export function BulkCreateDialog({ onClose }: Props) {
 
   const [count, setCount] = useState(10);
   const [namePattern, setNamePattern] = useState('acme-{n:03}');
-  const [hex, setHex] = useState<string>(NATIVE_HEXES.blue);
+  const [color, setColor] = useState<ContainerColor>('blue');
   const [randomColor, setRandomColor] = useState(false);
   const [icon, setIcon] = useState<ContainerIcon>('briefcase');
-  const [customIcon, setCustomIcon] = useState<string | undefined>(undefined);
   const [randomIcon, setRandomIcon] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>('');
   const [templateId, setTemplateId] = useState<string>('');
@@ -44,7 +36,7 @@ export function BulkCreateDialog({ onClose }: Props) {
 
   const previewSwatches = useMemo(() => {
     if (!randomColor) return [];
-    return Array.from({ length: Math.min(count, 5) }, () => randomHex());
+    return Array.from({ length: Math.min(count, 5) }, () => NATIVE_HEXES[randomNativeColor()]);
   }, [randomColor, count]);
 
   async function submit(e: React.FormEvent) {
@@ -57,18 +49,13 @@ export function BulkCreateDialog({ onClose }: Props) {
         .map((t) => t.trim())
         .filter(Boolean);
 
-      const native: ContainerColor = closestNative(hex);
-      const isNative = (Object.values(NATIVE_HEXES) as string[]).includes(hex.toLowerCase());
-
       const created = await invoke({
         type: 'container.bulkCreate',
         payload: {
           count,
           namePattern,
-          color: native,
+          color,
           icon,
-          customColor: randomColor || isNative ? undefined : hex,
-          customIcon: randomIcon ? undefined : customIcon,
           randomColor,
           randomIcon,
           workspaceId: workspaceId || undefined,
@@ -126,7 +113,7 @@ export function BulkCreateDialog({ onClose }: Props) {
                 {randomColor ? (
                   <span
                     className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ background: previewSwatches[i] ?? hex }}
+                    style={{ background: previewSwatches[i] ?? NATIVE_HEXES[color] }}
                   />
                 ) : null}
                 {n}
@@ -156,15 +143,15 @@ export function BulkCreateDialog({ onClose }: Props) {
             </label>
           </legend>
           <div
-            className={`grid grid-cols-12 gap-1.5 transition-opacity ${
+            className={`grid grid-cols-9 gap-1.5 transition-opacity ${
               randomColor ? 'opacity-40 pointer-events-none' : ''
             }`}
             role="radiogroup"
             aria-label="Color"
             aria-disabled={randomColor}
           >
-            {EXTENDED_HEXES.map((c) => {
-              const sel = hex.toLowerCase() === c.toLowerCase();
+            {CONTAINER_COLORS.map((c) => {
+              const sel = color === c;
               return (
                 <button
                   key={c}
@@ -172,37 +159,15 @@ export function BulkCreateDialog({ onClose }: Props) {
                   aria-label={c}
                   aria-checked={sel}
                   role="radio"
-                  onClick={() => setHex(c)}
+                  onClick={() => setColor(c)}
                   className={`h-6 w-6 rounded-full border-2 ${
                     sel ? 'border-[var(--color-text-primary)]' : 'border-transparent'
                   }`}
-                  style={{ background: c }}
+                  style={{ background: NATIVE_HEXES[c] }}
                 />
               );
             })}
           </div>
-          {!randomColor ? (
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="color"
-                value={hex}
-                onChange={(e) => setHex(e.target.value)}
-                aria-label="Custom hex"
-                className="h-7 w-10 cursor-pointer rounded border border-[var(--color-border)] bg-transparent"
-              />
-              <input
-                type="text"
-                value={hex}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (/^#[0-9a-fA-F]{0,6}$/.test(v)) setHex(v);
-                }}
-                maxLength={7}
-                spellCheck={false}
-                className="w-24 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-2 py-1 font-mono text-xs uppercase focus:border-[var(--color-accent)] focus:outline-none"
-              />
-            </div>
-          ) : null}
         </fieldset>
 
         <fieldset>
@@ -227,39 +192,26 @@ export function BulkCreateDialog({ onClose }: Props) {
           >
             {CONTAINER_ICONS.map((i) => {
               const Icon = iconComponent(i);
-              const sel = icon === i && !customIcon;
+              const sel = icon === i;
               return (
                 <button
                   key={i}
                   type="button"
                   aria-label={i}
                   aria-pressed={sel}
-                  onClick={() => {
-                    setIcon(i);
-                    setCustomIcon(undefined);
-                  }}
+                  onClick={() => setIcon(i)}
                   className={`flex h-7 w-7 items-center justify-center rounded border ${
                     sel
                       ? 'border-[var(--color-accent)] bg-[var(--color-bg-hover)]'
                       : 'border-[var(--color-border)] hover:bg-[var(--color-bg-hover)]'
                   }`}
-                  style={{ color: randomColor ? 'var(--color-text-primary)' : hex }}
+                  style={{ color: randomColor ? 'var(--color-text-primary)' : NATIVE_HEXES[color] }}
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </button>
               );
             })}
           </div>
-          {!randomIcon ? (
-            <div className="mt-2">
-              <IconPicker
-                nativeIcon={icon}
-                value={customIcon}
-                color={randomColor ? undefined : hex}
-                onChange={setCustomIcon}
-              />
-            </div>
-          ) : null}
         </fieldset>
 
         <div className="grid grid-cols-2 gap-3">

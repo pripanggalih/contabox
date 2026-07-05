@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import { useContaboxStore } from '../state/store';
 import { BulkOpenUrlDialog } from './BulkOpenUrlDialog';
 import { BulkTagsDialog } from './BulkTagsDialog';
+import { WorkspaceGlyph } from './WorkspaceGlyph';
 
 export function SelectionBar() {
   const containers = useContaboxStore((s) => s.containers);
@@ -159,7 +160,7 @@ export function SelectionBar() {
                     onClick={() => moveToWorkspace(w.id)}
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[var(--color-bg-hover)]"
                   >
-                    <span style={{ color: w.color }}>{w.icon}</span>
+                    <WorkspaceGlyph workspace={w} className="h-3.5 w-3.5" />
                     <span className="truncate">{w.name}</span>
                   </button>
                 ))}
