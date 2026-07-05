@@ -37,8 +37,13 @@ import { syncBundleSchema } from '@shared/schemas';
 import { diffToApply, mergeBundles } from '@shared/sync-merge';
 import { EMPTY_BUNDLE, MERGE_TABLES, type SyncBundle } from '@shared/sync-types';
 import { now } from '@shared/utils';
-import type { DriveClient } from './drive-client';
+import { DriveClient } from './drive-client';
 import { vault } from './vault';
+
+// Registered once by the maintainer at Google Cloud Console → OAuth client
+// (type "Web application"), redirect URI = browser.identity.getRedirectURL().
+// Injected at build time; empty string → the Sync UI shows "not configured".
+const OAUTH_CLIENT_ID = (import.meta.env?.VITE_GOOGLE_OAUTH_CLIENT_ID as string | undefined) ?? '';
 
 const FILE_NAME = 'contabox-vault.enc';
 const VERIFIER_PLAIN = 'contabox-vault-v1';
@@ -273,3 +278,7 @@ export class SyncEngine {
     clearSyncDirty();
   }
 }
+
+/** Shared engine instance. Constructed against the build-time OAuth client id;
+ *  if the id is empty, `connect()` will fail at the OAuth step (intentional). */
+export const syncEngine = new SyncEngine(new DriveClient(OAUTH_CLIENT_ID));

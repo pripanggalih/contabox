@@ -36,6 +36,7 @@ import {
   workspaceInputSchema,
 } from '@shared/schemas';
 import { totp } from '@shared/totp';
+import { z } from 'zod';
 import { autoRuleEngine } from './auto-rule-engine';
 import { autoSnapshotEngine } from './auto-snapshot';
 import { autofillResolver } from './autofill-resolver';
@@ -49,6 +50,7 @@ import { privacy } from './privacy';
 import { proxyEngine } from './proxy-engine';
 import { proxyManager } from './proxy-manager';
 import { snapshotEngine } from './snapshot-engine';
+import { syncEngine } from './sync-engine';
 import { templateManager } from './template-manager';
 import { type VaultExport, vault } from './vault';
 import { webRtcEngine } from './webrtc-engine';
@@ -629,6 +631,47 @@ export class CommandRouter {
       void broadcast({ type: 'state.vault' });
       void broadcast({ type: 'state.locks' });
       return r;
+    });
+
+    // ---------- Drive sync ----------
+    this.add('sync.status', async () => syncEngine.status());
+    this.add('sync.connect', async () => {
+      const r = await syncEngine.connect();
+      void broadcast({ type: 'state.sync' });
+      return r;
+    });
+    this.add('sync.disconnect', async () => {
+      await syncEngine.disconnect();
+      void broadcast({ type: 'state.sync' });
+      return { ok: true } as const;
+    });
+    this.add('sync.now', async (cmd) => {
+      const password = z.string().min(8).parse(cmd.payload.password);
+      const r = await syncEngine.sync(password);
+      void broadcast({ type: 'state.sync' });
+      void broadcast({ type: 'state.containers' });
+      void broadcast({ type: 'state.workspaces' });
+      void broadcast({ type: 'state.templates' });
+      void broadcast({ type: 'state.proxies' });
+      void broadcast({ type: 'state.fingerprints' });
+      void broadcast({ type: 'state.autoRules' });
+      void broadcast({ type: 'state.vault' });
+      return r;
+    });
+    this.add('sync.setIncludeSnapshots', async (cmd) => {
+      await syncEngine.setIncludeSnapshots(z.boolean().parse(cmd.payload.on));
+      void broadcast({ type: 'state.sync' });
+      return { ok: true } as const;
+    });
+    this.add('sync.resolveConflict', async (cmd) => {
+      const choice = z.enum(['use-remote', 'push-local']).parse(cmd.payload.choice);
+      const password = z.string().min(8).parse(cmd.payload.password);
+      await syncEngine.resolveConflict(choice, password);
+      void broadcast({ type: 'state.sync' });
+      void broadcast({ type: 'state.containers' });
+      void broadcast({ type: 'state.workspaces' });
+      void broadcast({ type: 'state.vault' });
+      return { ok: true } as const;
     });
   }
 
