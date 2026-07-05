@@ -100,9 +100,15 @@ Deletes are derived, not tracked. The engine caches the **last-synced bundle**
 gone from `local`) without touching any manager's delete path — a missed
 delete-site can't silently break sync, because no delete-site needs editing.
 
-Writes (create/update) to synced tables must set `updatedAt = now()`. Centralize
-in each manager's `create`/`update`. This is the only manager-level change; delete
-paths are untouched.
+Writes (create/update) to synced tables must set `updatedAt = now()`. Rather than
+editing every `.put()`/`.update()` call site across the managers (easy to miss
+one), this is done with **Dexie `creating`/`updating` hooks** registered once in
+`db.ts` for each synced table — every write auto-stamps `updatedAt`. Zero
+manager-level edits, and no call site can be forgotten. Delete paths are untouched.
+
+The same hooks set the `sync.dirty` flag, guarded by an in-memory
+`suppressDirty` switch that `sync-engine` raises while it writes merged results
+back (so applying a sync doesn't immediately re-mark the data dirty).
 
 ### New meta keys
 
