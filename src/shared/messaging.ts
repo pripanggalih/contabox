@@ -177,16 +177,9 @@ export type Command =
   // backup
   | { type: 'backup.exportPlain' }
   | { type: 'backup.exportEncrypted'; payload: { password: string } }
-  | { type: 'backup.import'; payload: { bundle: unknown; password?: string } }
-  // drive sync
-  | { type: 'sync.status' }
-  | { type: 'sync.connect' }
-  | { type: 'sync.disconnect' }
-  | { type: 'sync.now'; payload: { password: string } }
-  | { type: 'sync.setIncludeSnapshots'; payload: { on: boolean } }
   | {
-      type: 'sync.resolveConflict';
-      payload: { choice: 'use-remote' | 'push-local'; password: string };
+      type: 'backup.import';
+      payload: { bundle: unknown; password?: string; mode?: 'replace' | 'merge' };
     };
 
 export type CommandType = Command['type'];
@@ -294,12 +287,6 @@ export type ResultMap = {
   'backup.exportPlain': import('../background/backup-manager').BackupBundle;
   'backup.exportEncrypted': import('../background/backup-manager').BackupBundle;
   'backup.import': { restored: number };
-  'sync.status': import('../background/sync-engine').SyncStatus;
-  'sync.connect': { connected: true };
-  'sync.disconnect': { ok: true };
-  'sync.now': { merged: number; conflict?: 'password-mismatch' };
-  'sync.setIncludeSnapshots': { ok: true };
-  'sync.resolveConflict': { ok: true };
 };
 
 export type CommandResult<T extends CommandType> =
@@ -360,8 +347,7 @@ export type Broadcast =
   | { type: 'state.vault' }
   | { type: 'state.tabs' }
   | { type: 'state.locks' }
-  | { type: 'state.privacy' }
-  | { type: 'state.sync' };
+  | { type: 'state.privacy' };
 
 export async function broadcast(event: Broadcast): Promise<void> {
   // sendMessage with no specific recipient reaches all extension pages.

@@ -121,9 +121,10 @@ export function PrivacyPanel() {
     }
   }
 
-  async function commitImport() {
+  async function commitImport(mode: 'replace' | 'merge') {
     if (!pendingImport) return;
     if (
+      mode === 'replace' &&
       !confirm(
         'This will REPLACE every container, workspace, snapshot, vault entry, and rule with the contents of the backup. Continue?',
       )
@@ -137,12 +138,15 @@ export function PrivacyPanel() {
         type: 'backup.import',
         payload: {
           bundle: pendingImport,
+          mode,
           ...(pendingImportEncrypted ? { password: importPassword } : {}),
         },
       });
       setPendingImport(null);
       setImportPassword('');
-      alert(`Restored ${r.restored} rows. Re-unlock the vault from the Vault tab.`);
+      alert(
+        `${mode === 'merge' ? 'Merged' : 'Restored'} ${r.restored} rows. Re-unlock the vault from the Vault tab.`,
+      );
     } catch (err) {
       setError(String((err as Error).message ?? err));
     } finally {
@@ -214,9 +218,13 @@ export function PrivacyPanel() {
         </header>
         <p className="mb-3 text-sm text-[var(--color-text-muted)]">
           Full snapshot of every container, workspace, snapshot, proxy, fingerprint, rule, and vault
-          entry. Restore is destructive — it replaces your current data. Vault entries are always
-          individually encrypted; "Encrypted backup" wraps the whole bundle on top of that, suitable
-          for cloud storage.
+          entry. Vault entries are always individually encrypted; "Encrypted backup" wraps the whole
+          bundle on top of that, suitable for cloud storage.
+        </p>
+        <p className="mb-3 text-sm text-[var(--color-text-muted)]">
+          To move data to another device, export here and import there. On import,{' '}
+          <strong>Merge</strong> keeps the newest of each item on both sides (nothing is deleted) —
+          use it to sync two devices. <strong>Replace</strong> overwrites everything with the file.
         </p>
 
         {error ? (
@@ -291,14 +299,22 @@ export function PrivacyPanel() {
                   className="mb-2 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-sm"
                 />
               ) : null}
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => void commitImport()}
+                  onClick={() => void commitImport('merge')}
                   disabled={busy || (pendingImportEncrypted && !importPassword)}
                   className="rounded-md bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
                 >
-                  Replace data with this backup
+                  Merge (keep newest of both)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void commitImport('replace')}
+                  disabled={busy || (pendingImportEncrypted && !importPassword)}
+                  className="rounded-md border border-[var(--color-danger)] px-3 py-1.5 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:opacity-60"
+                >
+                  Replace (overwrite all)
                 </button>
                 <button
                   type="button"

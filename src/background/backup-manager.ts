@@ -39,7 +39,7 @@ import {
   randomBytes,
   SALT_LEN,
 } from '@shared/crypto';
-import { getDb } from '@shared/db';
+import { getDb, SYNCED_TABLES, setSuppressSyncStamp } from '@shared/db';
 import { META_LOCK_SESSION, META_VAULT_SALT, META_VAULT_VERIFIER } from '@shared/meta-keys';
 import { backupBundleSchema, backupDataSchemaExport } from '@shared/schemas';
 import type {
@@ -185,14 +185,27 @@ export class BackupManager {
   }
 
   /**
-   * Restore a previously-exported bundle. Replaces ALL data in the matching
-   * tables. The session-unlock cache is cleared on import; the user must
-   * re-unlock the vault and any locked containers afterwards.
+   * Restore a previously-exported bundle.
+   *
+   * - `mode: 'replace'` (default) wipes every table and repopulates it — a
+   *   clean restore onto a device you're happy to overwrite.
+   * - `mode: 'merge'` keeps local rows and folds the bundle in newest-wins by
+   *   `updatedAt` per row (synced tables). This is the cross-device path: edits
+   *   made on either side survive. Deletions do NOT propagate — a row you
+   *   removed locally reappears if the bundle still has it (safe default: merge
+   *   never loses data). Snapshots + meta are appended (bulkPut), never cleared.
+   *
+   * The session-unlock cache is always dropped; the user re-unlocks afterwards.
    *
    * @param bundle  parsed JSON, either plain or encrypted
    * @param password used only when bundle.encrypted === true
+   * @param mode    'replace' (default) or 'merge'
    */
-  async import(bundle: unknown, password?: string): Promise<{ restored: number }> {
+  async import(
+    bundle: unknown,
+    password?: string,
+    mode: 'replace' | 'merge' = 'replace',
+  ): Promise<{ restored: number }> {
     // Validate the untrusted bundle shape BEFORE wiping and repopulating every
     // table. A malformed/hostile bundle must not be able to write garbage rows
     // (which would break reads or brick the vault via a bad `vault.salt` meta).
@@ -227,6 +240,13 @@ export class BackupManager {
     const cleanedMeta = data.meta.filter((m) => m.key !== META_LOCK_SESSION);
 
     const db = getDb();
+
+    if (mode === 'merge') {
+      const restored = await this.merge(data, cleanedMeta);
+      vault.lock();
+      return { restored };
+    }
+
     let restored = 0;
     await db.transaction(
       'rw',
@@ -286,6 +306,80 @@ export class BackupManager {
 
     return { restored };
   }
+
+  /**
+   * Newest-wins merge: fold the bundle into local rows per synced table without
+   * clearing. Snapshots + meta are appended. Returns the number of incoming
+   * rows that won (were written).
+   *
+   * Vault secrets are keyed by a per-device salt, so a bundle from a different
+   * vault (different salt) cannot be merged — its entries would be undecryptable
+   * under the local key. That case throws; the user should use Replace instead.
+   */
+  private async merge(data: BackupBundleData, cleanedMeta: MetaRecord[]): Promise<number> {
+    const db = getDb();
+    const localSalt = (await db.meta.get(META_VAULT_SALT))?.value as string | undefined;
+    const bundleSalt = cleanedMeta.find((m) => m.key === META_VAULT_SALT)?.value as
+      | string
+      | undefined;
+    if (localSalt && bundleSalt && localSalt !== bundleSalt) {
+      throw new Error(
+        'This backup is from a different vault (different master key). Use Replace instead, or import it on a device with no vault yet.',
+      );
+    }
+
+    let written = 0;
+    setSuppressSyncStamp(true); // keep each row's own updatedAt; don't re-stamp
+    try {
+      await db.transaction(
+        'rw',
+        [
+          db.containers,
+          db.workspaces,
+          db.templates,
+          db.proxies,
+          db.proxyPools,
+          db.fingerprints,
+          db.rules,
+          db.vault,
+          db.snapshots,
+          db.meta,
+        ],
+        async () => {
+          for (const name of SYNCED_TABLES) {
+            const table = db[name] as unknown as {
+              schema: { primKey: { keyPath: string } };
+              toArray: () => Promise<Array<Record<string, unknown>>>;
+              bulkPut: (r: unknown[]) => Promise<unknown>;
+            };
+            const pk = table.schema.primKey.keyPath;
+            const incoming = data[name] as unknown as Array<Record<string, unknown>>;
+            if (!incoming.length) continue;
+            const localById = new Map((await table.toArray()).map((r) => [r[pk], r] as const));
+            const winners = incoming.filter((r) => {
+              const local = localById.get(r[pk]);
+              return !local || ua(r) >= ua(local);
+            });
+            if (winners.length) {
+              await table.bulkPut(winners);
+              written += winners.length;
+            }
+          }
+          // Snapshots + identity/settings meta are append-style (no clock).
+          if (data.snapshots.length) await db.snapshots.bulkPut(data.snapshots);
+          if (cleanedMeta.length) await db.meta.bulkPut(cleanedMeta);
+        },
+      );
+    } finally {
+      setSuppressSyncStamp(false);
+    }
+    return written;
+  }
+}
+
+/** Per-row merge clock; rows without `updatedAt` sort oldest. */
+function ua(r: Record<string, unknown>): number {
+  return typeof r.updatedAt === 'number' ? r.updatedAt : 0;
 }
 
 export const backupManager = new BackupManager();

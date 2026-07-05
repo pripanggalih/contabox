@@ -20,7 +20,7 @@ import type {
 } from './types';
 import { now } from './utils';
 
-/** Tables whose rows participate in Drive sync (in-memory merge, not indexed). */
+/** Tables carrying an `updatedAt` clock, folded newest-wins by a merge import. */
 export const SYNCED_TABLES = [
   'containers',
   'workspaces',
@@ -34,22 +34,11 @@ export const SYNCED_TABLES = [
 
 let _suppress = false;
 /**
- * Raised by sync-engine while it writes merged results, so applying a sync
- * neither overwrites the resolved `updatedAt` nor re-marks the data dirty.
+ * Raised by the merge importer while it writes folded rows, so applying a merge
+ * keeps each row's own `updatedAt` instead of re-stamping it to now().
  */
 export function setSuppressSyncStamp(on: boolean): void {
   _suppress = on;
-}
-
-/** In-process dirty flag, set by the sync hooks on every local write. Not
- *  persisted per-write (that raced DB teardown); the engine persists it to
- *  `meta` at sync time. Cleared by `clearSyncDirty()`. */
-let _syncDirty = false;
-export function isSyncDirty(): boolean {
-  return _syncDirty;
-}
-export function clearSyncDirty(): void {
-  _syncDirty = false;
 }
 
 export class ContaboxDB extends Dexie {
@@ -149,10 +138,9 @@ export class ContaboxDB extends Dexie {
   }
 
   /**
-   * Per-table hooks that (a) auto-stamp `updatedAt` on every create/update so
-   * the three-way merge has a per-row clock with zero call-site wiring, and
-   * (b) set the in-process `_syncDirty` flag. Both are suppressed while the
-   * sync engine writes merged results back (see `setSuppressSyncStamp`).
+   * Per-table hooks that auto-stamp `updatedAt` on every create/update, giving
+   * the merge importer a per-row clock with zero call-site wiring. Suppressed
+   * while the importer writes folded rows (see `setSuppressSyncStamp`).
    */
   private installSyncHooks(): void {
     for (const name of SYNCED_TABLES) {
@@ -161,11 +149,9 @@ export class ContaboxDB extends Dexie {
       table.hook('creating', (_pk, obj: { updatedAt?: number }) => {
         if (!_suppress) obj.updatedAt = now();
         else obj.updatedAt ??= now();
-        if (!_suppress) _syncDirty = true;
       });
       table.hook('updating', (_mods, _pk, _obj: { updatedAt?: number }) => {
-        if (_suppress) return undefined; // keep merged updatedAt as-is
-        _syncDirty = true;
+        if (_suppress) return undefined; // keep the row's updatedAt as-is
         return { updatedAt: now() };
       });
     }

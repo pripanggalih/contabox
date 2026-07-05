@@ -299,23 +299,3 @@ export const backupBundleSchema = z.discriminatedUnion('encrypted', [
 ]);
 /** Validate the decrypted inner payload of an encrypted bundle. */
 export const backupDataSchemaExport = backupDataSchema;
-
-/* ---------- Drive sync bundle ---------- */
-
-// Same permissive per-row shape as the backup bundle (records originate from
-// our own encrypted blob, but a corrupt/hostile blob must not crash writes).
-// `snapshots` is optional (present only when the user toggles them in).
-export const syncBundleSchema = z.object({
-  containers: z.array(looseRow).max(100_000),
-  workspaces: z.array(looseRow).max(100_000),
-  templates: z.array(looseRow).max(100_000),
-  proxies: z.array(looseRow).max(100_000),
-  proxyPools: z.array(looseRow).max(100_000),
-  fingerprints: z.array(looseRow).max(100_000),
-  rules: z.array(looseRow).max(100_000),
-  vault: z.array(vaultEntrySchema).max(100_000),
-  snapshots: z.array(looseRow).max(100_000).optional(),
-  vaultSalt: z.string().max(64),
-  vaultVerifier: encryptedBlobSchema,
-});
-export type SyncBundleSchema = z.infer<typeof syncBundleSchema>;

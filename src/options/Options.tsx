@@ -6,12 +6,11 @@ import { FingerprintPanel } from './components/FingerprintPanel';
 import { PrivacyPanel } from './components/PrivacyPanel';
 import { ProxyPanel } from './components/ProxyPanel';
 import { ProxyPoolPanel } from './components/ProxyPoolPanel';
-import { SyncPanel } from './components/SyncPanel';
 import { VaultEntriesPanel } from './components/VaultEntriesPanel';
 import { VaultPanel } from './components/VaultPanel';
 import { useOptionsStore } from './state/store';
 
-type Tab = 'general' | 'proxy' | 'fingerprint' | 'rules' | 'vault' | 'sync' | 'privacy';
+type Tab = 'general' | 'proxy' | 'fingerprint' | 'rules' | 'vault' | 'privacy';
 
 export function Options() {
   const refresh = useOptionsStore((s) => s.refresh);
@@ -26,8 +25,7 @@ export function Options() {
         event.type === 'state.proxies' ||
         event.type === 'state.fingerprints' ||
         event.type === 'state.autoRules' ||
-        event.type === 'state.vault' ||
-        event.type === 'state.sync'
+        event.type === 'state.vault'
       ) {
         void refresh();
       }
@@ -47,23 +45,21 @@ export function Options() {
         aria-label="Settings sections"
         className="mb-4 flex gap-1 border-b border-[var(--color-border)]"
       >
-        {(['general', 'proxy', 'fingerprint', 'rules', 'vault', 'sync', 'privacy'] as Tab[]).map(
-          (t) => (
-            <button
-              key={t}
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => setTab(t)}
-              className={`rounded-t-md px-3 py-1.5 text-sm capitalize ${
-                tab === t
-                  ? 'border-b-2 border-[var(--color-accent)] text-[var(--color-text-primary)]'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-              }`}
-            >
-              {t}
-            </button>
-          ),
-        )}
+        {(['general', 'proxy', 'fingerprint', 'rules', 'vault', 'privacy'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={`rounded-t-md px-3 py-1.5 text-sm capitalize ${
+              tab === t
+                ? 'border-b-2 border-[var(--color-accent)] text-[var(--color-text-primary)]'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
       </nav>
 
       {tab === 'general' ? <GeneralPanel /> : null}
@@ -81,7 +77,6 @@ export function Options() {
           <VaultEntriesPanel />
         </div>
       ) : null}
-      {tab === 'sync' ? <SyncPanel /> : null}
       {tab === 'privacy' ? <PrivacyPanel /> : null}
 
       <style>{`.input { width: 100%; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-bg-primary); padding: 6px 8px; font-size: 13px; }
