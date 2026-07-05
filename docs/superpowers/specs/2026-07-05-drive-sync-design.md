@@ -23,7 +23,9 @@ so two devices can each make changes without data loss.
   backend, no monthly cost, no maintenance. Google only ever sees ciphertext.
 - **Trigger:** manual **Sync** button. No auto-debounce, no polling. A `dirty`
   flag drives a UI badge only.
-- **Conflict handling:** per-item merge by `updatedAt` + tombstones. No wholesale
+- **Conflict handling:** three-way per-item merge (`base` / `local` / `remote`)
+  keyed by `updatedAt`. Deletes are derived by diffing against the last-synced
+  `base` snapshot — no tombstone table, no delete-site wiring. No wholesale
   last-write-wins — a two-device concurrent edit must not lose data.
 - **Snapshots:** user toggle (include/exclude) in settings, default **OFF**,
   with a full explanation of the tradeoff.
@@ -72,11 +74,9 @@ so two devices can each make changes without data loss.
 ### Blob on Drive
 
 `contabox-vault.enc` in Drive `appDataFolder` (hidden from the user's Drive UI,
-inaccessible to other apps). Contents = existing encrypted bundle, with:
-
-- Every synced record carries `updatedAt: number`.
-- A `tombstones` array: `{ table, id, deletedAt }`.
-- Snapshots included only when the snapshot toggle is ON.
+inaccessible to other apps). Contents = existing encrypted bundle, with every
+synced record carrying `updatedAt: number`. Snapshots included only when the
+snapshot toggle is ON.
 
 Synced tables: containers, workspaces, templates, proxies, proxyPools,
 fingerprints, rules, vault. Snapshots conditional. `meta` rows are **not** synced
@@ -88,20 +88,21 @@ as data except the vault identity rows needed to bootstrap (salt + verifier).
   `ProxyPool`, `FingerprintProfile`, `AutoRule`. Backfill `updatedAt = createdAt`
   in the `.upgrade()` block.
 - `VaultEntry` already has `updatedAt` — no change.
-- New table `tombstones` with keyPath `[table+id]` and index `deletedAt`.
-- No columns removed, no keyPaths renamed, no store wiped — complies with the
-  forward-only/additive migration rule.
+- No new table, no columns removed, no keyPaths renamed, no store wiped —
+  complies with the forward-only/additive migration rule.
 
-### Delete becomes soft-tracked
+### Three-way merge base, not tombstones
 
-Every code path that deletes a synced row must also write a tombstone
-`{ table, id, deletedAt: now() }`. The row is still hard-deleted locally
-(existing reads are unchanged — no `deletedAt` filtering needed on read paths);
-the tombstone lives only in the separate `tombstones` table and is consulted
-during merge. This keeps the blast radius off existing read/query code.
+Deletes are derived, not tracked. The engine caches the **last-synced bundle**
+(the merged result of the previous successful sync) in a single meta row
+`sync.base`. At the next sync there are three versions of every record set:
+`base`, `local`, `remote`. This detects a local delete (present in `base`+`remote`,
+gone from `local`) without touching any manager's delete path — a missed
+delete-site can't silently break sync, because no delete-site needs editing.
 
 Writes (create/update) to synced tables must set `updatedAt = now()`. Centralize
-in each manager's `create`/`update` rather than sprinkling call sites.
+in each manager's `create`/`update`. This is the only manager-level change; delete
+paths are untouched.
 
 ### New meta keys
 
@@ -110,29 +111,32 @@ in each manager's `create`/`update` rather than sprinkling call sites.
 - `sync.fileId` — Drive file id of the blob.
 - `sync.lastRevision` — Drive `revisionId`/`headRevisionId` of the last blob this
   device successfully synced, to detect remote changes.
+- `sync.base` — the last-synced merged bundle (JSON), the common ancestor for the
+  next three-way merge. Rewritten on every successful sync.
 - `sync.includeSnapshots` — boolean toggle, default `false`.
 - `sync.dirty` — boolean, set on any local write to a synced table, cleared on a
   successful push.
 
 ## Merge algorithm (`sync-merge.ts`)
 
-Pure function: `merge(local: Bundle, remote: Bundle): Bundle`.
+Pure function: `merge(base: Bundle, local: Bundle, remote: Bundle): Bundle`.
+`base` is the common ancestor (last-synced bundle); on the very first sync it is
+an empty bundle.
 
-For each synced table:
+For each synced table, over the union of ids across all three sides:
 
-1. Union all records from `local` and `remote` by `id`.
-2. For an `id` present in both, keep the one with the greater `updatedAt`
-   (ties → deterministic tiebreak on `id` to stay stable).
-3. Union tombstones from both sides; for each `{table, id}` keep the greatest
-   `deletedAt`.
-4. Drop any record whose matching tombstone `deletedAt > record.updatedAt`
-   (a delete newer than the latest edit wins; an edit newer than the delete
-   resurrects the row — intentional).
-5. Prune tombstones that are strictly older than the surviving record for the
-   same id (housekeeping so tombstones don't grow unbounded).
+1. **Deleted on one side:** id in `base` but absent in `local` → deleted locally.
+   Id in `base` but absent in `remote` → deleted remotely. A delete wins **unless**
+   the other side edited the row after the base (its `updatedAt` is newer than the
+   base copy's `updatedAt`) — then the edit resurrects it (edit-wins-over-stale-
+   delete, intentional and symmetric).
+2. **Present on both sides:** keep the greater `updatedAt` (ties → deterministic
+   tiebreak on `id`).
+3. **Present on one side only, absent from base:** a fresh create → keep it.
 
-The merged bundle is written back to Dexie (bulkPut survivors, delete tombstoned
-ids) **and** re-uploaded so both sides converge to the same state.
+The merged bundle is (a) written back to Dexie — bulkPut survivors, delete ids
+that resolved to "deleted"; (b) re-uploaded to Drive; and (c) stored as the new
+`sync.base` for the next merge. All three sides converge to identical state.
 
 ## Flows
 
@@ -151,14 +155,16 @@ ids) **and** re-uploaded so both sides converge to the same state.
 Preconditions: Drive connected **and** vault unlocked (else the button is
 disabled with a hint). Respect `lock-manager` throughout.
 
-1. Collect local state, stamping `updatedAt`, gathering tombstones.
+1. Collect local state (records already carry `updatedAt`). Load `sync.base`
+   (empty bundle if unset).
 2. GET remote file metadata; if `revisionId === lastRevision`, the remote is
-   unchanged — skip download and merge, just upload local (fast path). Otherwise
-   download the remote blob and decrypt with the master password.
-3. `merge(local, remote)`.
+   unchanged — set `remote = base` (nothing new upstream) and skip the download.
+   Otherwise download the remote blob and decrypt with the master password.
+3. `merge(base, local, remote)`.
 4. Write merged result back to Dexie.
 5. Encrypt merged bundle, upload (PATCH) to Drive.
-6. Store the new `revisionId` as `lastRevision`; clear `dirty`.
+6. Store the new `revisionId` as `lastRevision`, save the merged bundle as
+   `sync.base`, clear `dirty`.
 
 ### Pull
 
@@ -246,8 +252,9 @@ vault is locked or Drive is not connected.
 
 ## Testing
 
-- `sync-merge.ts` — pure unit tests (Vitest): concurrent edits, delete-vs-edit
-  both orderings, tombstone pruning, ties, disjoint sets, empty sides.
+- `sync-merge.ts` — pure unit tests (Vitest): concurrent edits, local/remote
+  delete detection vs base, edit-resurrects-stale-delete both orderings, ties,
+  fresh creates, empty base (first sync), disjoint sets.
 - `drive-client.ts` — mock `fetch` + `browser.identity`; assert request shapes,
   not Google's servers.
 - `sync-engine.ts` — integration with `fake-indexeddb`: push→pull round-trip
