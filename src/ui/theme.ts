@@ -23,3 +23,15 @@ export function applyTheme(t: Theme = getTheme()): void {
   if (t === 'system') delete el.dataset.theme;
   else el.dataset.theme = t;
 }
+
+// Live-sync every open surface. `storage` fires in OTHER same-origin docs when
+// setTheme writes localStorage, so changing the theme in options repaints an
+// already-open sidebar/popup. matchMedia covers OS flips while in system mode.
+export function watchTheme(): void {
+  window.addEventListener('storage', (e) => {
+    if (e.key === KEY || e.key === null) applyTheme();
+  });
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (getTheme() === 'system') applyTheme();
+  });
+}
