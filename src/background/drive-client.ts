@@ -28,8 +28,9 @@ export class DriveClient {
       `&prompt=consent`;
     const redirectResponse = await browser.identity.launchWebAuthFlow({ url, interactive: true });
     const m = /[#&]access_token=([^&]+)/.exec(redirectResponse ?? '');
-    if (!m || !m[1]) throw new Error('Drive authorization failed: no access token');
-    return decodeURIComponent(m[1]);
+    const token = m?.[1];
+    if (!token) throw new Error('Drive authorization failed: no access token');
+    return decodeURIComponent(token);
   }
 
   private async req(token: string, url: string, init: RequestInit = {}): Promise<Response> {
@@ -50,7 +51,8 @@ export class DriveClient {
       `${DRIVE}/files?spaces=appDataFolder&q=${q}&fields=files(id,name)`,
     );
     const list = (await listRes.json()) as { files: Array<{ id: string }> };
-    if (list.files.length > 0) return list.files[0]!.id;
+    const existing = list.files[0];
+    if (existing) return existing.id;
 
     const createRes = await this.req(token, `${DRIVE}/files?fields=id`, {
       method: 'POST',
